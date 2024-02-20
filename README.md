@@ -92,14 +92,18 @@ pip install -U bookbaker
     {
       "name": "gemini",
       "description": "A translator for gemini.com",
+      "max_retries": 10,
+      "max_tokens": null,
+      "remind_interval": 3,
+      "skip_translated": false,
+      "max_reply_tokens": null,
       "backend": {
         "model": "models\/gemini-pro",
         "api_key": "",
         "api_host": "generativelanguage.googleapis.com",
         "comp_tokens": 4096.0,
-        "max_reply_tokens": null,
         "stop": null,
-        "temperature": null,
+        "temperature": 0.5,
         "top_p": null,
         "top_k": null,
         "tools": null,
@@ -214,7 +218,7 @@ pip install -U bookbaker
 
 `GPT` 家族翻译的还可以，风格有些过于严肃，流畅度和速度上不如 `Gemini`，4.0 的 `API` 收费，免费的速率限制基本也没法用，想交钱还得用美国本土信用卡，建议马家找中转。不愧是 `ClosedAI`。好在出错概率小，尊重词汇表，更能理解复杂的格式化(`HTML`/`JSON`/...)，内容安全限制更低 (这里倒是 Open 了是吧??)。
 
-后两者的输出 Tokens 限制都在 2048-4096 左右，输入 Tokens 上万了，语境理解相当棒，一次也能吐很多内容 ~~只要你钱够~~。基本上能看的也就后俩的。
+后两者的输出 Tokens 限制都在 2048-4096 左右，输入 Tokens 上万了，语境理解相当棒，一次也能吐很多内容 ~~只要你钱够~~。基本上能看的也就后俩的。但他俩翻久了容易忘记词汇表，如果遇到这问题可以降低他们配置中的 `reminder_interval` 来更频繁的提醒词汇表，建议适量。
 
 | Name        | Speed    | Quality | Restriction | Cost     | Respect Glossaries  |
 | ----------- | -------- | ------- | ----------- | -------- | ------------------- |

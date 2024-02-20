@@ -22,9 +22,15 @@ class GPTTranslator(BaseTranslator):
     name: str = Field(default_factory=lambda: f"gpt-{str(uuid4())[:8]}")
     description: str = "GPT Translator"
     max_retries: int | None = 10
+    """Max retries before giving up"""
     batch_size: int = 512
-    max_tokens: int = 5000
+    """Max characters to send in one batch"""
+    max_tokens: int | None = 5000
+    """Max tokens to preserve"""
+    remind_interval: int | None = 10
+    """Interval to remind glossaries"""
     skip_translated: bool = True
+    """Skip already translated lines"""
     backend: Bot = Field(
         default_factory=lambda: Bot(model=Model.GPT4TurboPreview, api_key=''))
 
@@ -48,7 +54,7 @@ class GPTTranslator(BaseTranslator):
             "Keep the original structure of the content.\n"\
             "If the input is a list, the output order should be the same\n"
         if task.glossaries:
-            prompt += "Translation reference:\n"
+            prompt += "Translation reference to follow, you will be constantly reminded:\n"
             prompt += '\n'.join(f"{k} : {v}" for k, v in task.glossaries)
         if book is not None:
             prompt += "\nThe book you are translating:\n"
@@ -78,6 +84,16 @@ class GPTTranslator(BaseTranslator):
 
         self.backend.prompt = prompt
 
+        def remind():
+            if task.glossaries:
+                logger.debug("%s: Sending glossaries", self)
+                sess.append(
+                    Message(role=Role.User, parts=f"[{", ".join(g[0] for g in task.glossaries)}]"))
+                sess.append(
+                    Message(role=Role.Assistant, parts=f"[{", ".join(g[1] for g in task.glossaries)}]"))
+        remind()
+        cycle = 0
+
         @overload
         async def translate(c: dict[str, str | None]) -> dict[str, str | None]:
             ...
@@ -86,7 +102,10 @@ class GPTTranslator(BaseTranslator):
         async def translate(c: list[str]) -> list[str]:
             ...
 
-        async def translate(c: list[str] | dict[str, str | None]) -> list[str] | dict[str, str | None]:
+        async def translate(
+                c: list[str] | dict[str, str | None]
+        ) -> list[str] | dict[str, str | None]:
+            nonlocal cycle
             if isinstance(c, list):
                 jstr = json.dumps({"list": c}, ensure_ascii=False)
             else:
@@ -124,6 +143,12 @@ class GPTTranslator(BaseTranslator):
                             "Failed to get valid response in %d retries" % self.max_retries)
                     await asyncio.sleep(1)
                     continue
+
+                finally:
+                    cycle += 1
+                    if self.remind_interval is not None and cycle >= self.remind_interval:
+                        remind()
+                        cycle = 0
 
         if book is not None and None in (
             book.title_translated,

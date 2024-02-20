@@ -32,5 +32,5 @@ LANG_NAME_TABLE = {
     "SV": "Swedish",
     "TR": "Turkish",
     "UK": "Ukrainian",
-    "ZH": "Chinese"
+    "ZH": "Chinese (Simplified)",
 }

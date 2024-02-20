@@ -13,8 +13,7 @@ from ..utils import get_url_content
 from .base import BaseExporter
 
 
-_a_img_matcher = re.compile(
-    r"<a.*?href=\"(.+\.(?:png|jpg|jpeg|webp|gif|PNG|JPG|JPEG|WEBP|GIF))\".*?>.*?<\/a>")
+_a_img_matcher = re.compile(r"<a.*?href=\"(.+?)\".*?name=\"img\".*?>.*?<\/a>")
 _img_matcher = re.compile(r"<img.*?src=\"(.*?)\".*?>")
 
 

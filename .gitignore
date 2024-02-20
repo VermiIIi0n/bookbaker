@@ -3,6 +3,7 @@ workflow.*
 **/logs
 *.json
 !demo_config.json
+exports/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

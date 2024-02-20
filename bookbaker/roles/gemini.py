@@ -21,8 +21,15 @@ class GeminiTranslator(BaseTranslator):
     name: str = Field(default_factory=lambda: f"gemini-{str(uuid4())[:8]}")
     description: str = "A translator for gemini.com"
     max_retries: int | None = 10
+    """Max retries before giving up"""
     batch_size: int = 1024
+    """Max characters to send in one batch"""
+    max_tokens: int | None = None
+    """Max tokens to preserve"""
+    remind_interval: int | None = 3
+    """Interval to remind glossaries"""
     skip_translated: bool = True
+    """Skip already translated lines"""
     backend: Bot = Field(
         default_factory=lambda: Bot(model="models/gemini-pro", api_key=''))
 
@@ -43,11 +50,13 @@ class GeminiTranslator(BaseTranslator):
         sess = self.backend.new_session()
         sess.message_lock = 2  # Prevents first 2 prompts being deleted
 
-        prompt = f"Translate JSON values from {sauce_lang} to {target_lang}.\n"\
-            "Keep the original structure of the content.\n"\
-            "If the input is a list, the output order should be the same\n"
+        prompt = (f"Translate JSON values from {sauce_lang} into fluent and native {target_lang}.\n"
+                  "Keep the original structure of the content.\n"
+                  "You must not output the original content.\n"
+                  "If the input is a list, the output order should be the same\n"
+                  )
         if task.glossaries:
-            prompt += "Translation reference:\n"
+            prompt += "Translation reference to follow, you will be constantly reminded:\n"
             prompt += '\n'.join(f"{k} : {v}" for k, v in task.glossaries)
         if book is not None:
             prompt += "\nThe book you are translating:\n"
@@ -71,14 +80,25 @@ class GeminiTranslator(BaseTranslator):
             "notes": episode.notes,
         }
         prompt += f"{json.dumps(episode_meta, ensure_ascii=False)}\n"
-        prompt += "\nYou can start translating now: {\"series\": null, \"test_text\": \"Apple is yummy!\","\
-            "\"test_array\": [\"Hello, world!\", \"How are you?\"]}"
+        prompt += ("\nYou can start translating now: {\"series\": null, \"test_text\": \"Apple is yummy!\","
+                   "\"test_array\": [\"Hello, world!\", \"How are you?\"]}"
+                   )
 
         logger.debug("%s: generated prompt: %s", self, prompt)
 
         sess.append(Message(role=Role.User, parts=prompt))
         sess.append(Message(role=Role.Model, parts="{\"series\": null, \"test_text\": \"苹果很好吃！\""
                             ",\"test_array\": [\"你好，世界！\", \"你好吗？\"]}"))
+
+        def remind():
+            if task.glossaries:
+                logger.debug("%s: Sending glossaries", self)
+                sess.append(
+                    Message(role=Role.User, parts=f"[{", ".join(g[0] for g in task.glossaries)}]"))
+                sess.append(
+                    Message(role=Role.Model, parts=f"[{", ".join(g[1] for g in task.glossaries)}]"))
+        remind()
+        cycle = 0
 
         @overload
         async def translate(c: dict[str, str | None]) -> dict[str, str | None]:
@@ -88,9 +108,13 @@ class GeminiTranslator(BaseTranslator):
         async def translate(c: list[str]) -> list[str]:
             ...
 
-        async def translate(c: list[str] | dict[str, str | None]) -> list[str] | dict[str, str | None]:
+        async def translate(
+                c: list[str] | dict[str, str | None]
+        ) -> list[str] | dict[str, str | None]:
+            nonlocal cycle
             jstr = json.dumps(c, ensure_ascii=False)
             logger.debug("%s: Sending prompt: %s", self, jstr)
+            await sess.trim(self.max_tokens)
             sess_bak = sess.messages.copy()
 
             retry = 0
@@ -124,6 +148,12 @@ class GeminiTranslator(BaseTranslator):
                             "Failed to get valid response in %d retries" % self.max_retries)
                     await asyncio.sleep(1)
                     continue
+
+                finally:
+                    cycle += 1
+                    if self.remind_interval is not None and cycle >= self.remind_interval:
+                        remind()
+                        cycle = 0
 
         if book is not None and None in (
             book.title_translated,
