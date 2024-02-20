@@ -9,7 +9,7 @@
 1. 生肉无人烤
 2. 译者咕咕
 3. 翻译质量感人（虽然用爱发电伟大但是...)
-4. 译文充满吐槽私货（个人极其厌恶）
+4. 译文充满吐槽私货
 
 而发愁？
 
@@ -55,14 +55,17 @@ pip install -U bookbaker
       "friendly_name": "TS-Tenshi",
       "url": "https://syosetu.org/novel/333942/",
       "crawler": null,
-      "translator": "gpt",
+      "translator": ["gemini", "gpt"],
       "exporter": "epub",
       "sauce_lang": "JA",
       "target_lang": "ZH",
       "glossaries": [
-        ["ザラキエル", "撒拉琪尔"],
-        ["上司", "上司"],
-        ["サーヴィトリ", "萨维特丽"]
+        ["ザラキエル", "萨拉琪尔"],
+        ["神専魔法", "神专魔法"],
+        ["サーヴィトリ", "萨维特丽"],
+        ["サラフィエル", "萨拉菲尔"],
+        ["アルマロス", "阿尔马洛斯"],
+        ["クロ", "小黑"]
       ]
     }
   ],
@@ -139,6 +142,7 @@ pip install -U bookbaker
     {
       "name": "epub",
       "description": "EPUB Exporter",
+      "use_translated": true,
       "classname": "EpubExporter",
       "modulename": "bookbaker.roles.epub"
     }
@@ -171,14 +175,14 @@ pip install -U bookbaker
 
 这部分定义了任务，一个任务就是要处理的书籍的相关信息。
 
-- `friendly_name`: 没啥用，助记的
-- `url`: 书籍的网址
-- `crawler`: 爬虫的名字，如果为 `null` 则会自动选择一个合适的爬虫
-- `translator`: 翻译器的名字, `null` 为不翻译
-- `exporter`: 导出器的名字, `null` 为不导出，但年轻人导导更健康
-- `sauce_lang`: 原文语言，`ISO 639` 格式
-- `target_lang`: 目标语言, `ISO 639` 格式
-- `glossaries`: 词汇表，用于翻译时替换, 例如 `[[原文, 目标], ...]`，可用于译名对照。
+- `friendly_name`: `str` 没啥用，助记的
+- `url`: `str` 书籍的网址
+- `crawler`: `str` 爬虫的名字，如果为 `null` 则会自动选择一个合适的爬虫
+- `translator`: `str | list[str]` 翻译器的名字(们), `null` 为不翻译
+- `exporter`: `str | list[str]` 导出器的名字(们), `null` 为不导出，但年轻人导导更健康
+- `sauce_lang`: `str` 原文语言，`ISO 639` 格式
+- `target_lang`: `str` 目标语言, `ISO 639` 格式
+- `glossaries`: `list[tuple[str, str]]` 词汇表 例如 `[[Unacceptable, 可接受的], ...]`，可用于译名对照。
 
 `roles`
 
@@ -212,11 +216,11 @@ pip install -U bookbaker
 
 首先 `DeepL`/`Gemini AI`/`GPT` 都是基于变形金刚(~~完全胜利~~)的，所以他们共享一些特性。
 
-`DeepL` 每个月免费用户有 5M 免费 Tokens，需要国外信用卡注册。但因为生成限制 Tokens 太短，一次性丢长句容易造成内容截断，所以是分句子发送的。这导致经常没有足够的语境提供信息，翻译的前后文会不搭调。~~但你就问快不快吧。~~ 另外对词汇表的语言组合有些限制。
+`DeepL` 每个月免费用户有 5M 免费 `Tokens`，需要国外信用卡注册。但因为生成限制 `Tokens` 太短，一次性丢长句容易造成内容截断，所以是分句子发送的。这导致经常没有足够的语境提供信息，翻译的前后文会不搭调。~~但你就问快不快吧。~~ 另外对词汇表的语言组合有些限制。
 
 `Gemini AI` 翻的最好，目前 `API` 免费，速率限制不成问题，速度也不错。但不知为何解除所有`prompt` 安全限制后仍会阻挡一部分内容，有些瑟瑟场面翻不了。另外比起 `GPT` 更容易偶尔摆烂直接吐原文，也不太尊重提供的词汇表。
 
-`GPT` 家族翻译的还可以，风格有些过于严肃，流畅度和速度上不如 `Gemini`，4.0 的 `API` 收费，免费的速率限制基本也没法用，想交钱还得用美国本土信用卡，建议马家找中转。不愧是 `ClosedAI`。好在出错概率小，尊重词汇表，更能理解复杂的格式化(`HTML`/`JSON`/...)，内容安全限制更低 (这里倒是 Open 了是吧??)。
+`GPT` 家族翻译的还可以，风格有些过于严肃，流畅度和速度上不如 `Gemini`，`4.0` 的 `API` 收费，免费的速率限制基本也没法用，想交钱还得用美国本土信用卡，建议马家找中转。不愧是 `ClosedAI`。好在出错概率小，尊重词汇表，更能理解复杂的格式化(`HTML`/`JSON`/...)，内容安全限制更低 (这里倒是 Open 了是吧??)。
 
 后两者的输出 Tokens 限制都在 2048-4096 左右，输入 Tokens 上万了，语境理解相当棒，一次也能吐很多内容 ~~只要你钱够~~。基本上能看的也就后俩的。但他俩翻久了容易忘记词汇表，如果遇到这问题可以降低他们配置中的 `reminder_interval` 来更频繁的提醒词汇表，建议适量。
 
@@ -236,15 +240,26 @@ pip install -U bookbaker
 
 ## 数据结构
 
-数据库内有以下结构
+数据库内有以下大致结构
 
 数据库
 
-- `Tables`
-  - `Books`
-    - `Chapters`
-      - `Episodes`
-        - `Lines`
+- `Table`
+  - `Books...`
+    - `title`
+    - `series`
+    - `author`
+    - `Tags...`： `list[str]`
+    - ...
+    - `Chapters...`:
+      - `title`
+      - ...
+      - `Episodes...`
+        - `title`
+        - `notes`
+        - `Lines...`
+          - `content` 原文
+          - `translated` 译文
 
 主要内容都在各条 `Line` 中 `line.content`, `line.translated` 为原文和翻译文本。你可以自行修改。如果想要重新翻译某句话，可以直接将 `line.translated` 改为 `null`。
 
@@ -256,4 +271,4 @@ pip install -U bookbaker
 - `INFO`: 一些稍重要的运行阶段信息，主要用于进度报告，（e.g. 正在爬取某书）
 - `WARNING`: 有可能造成书籍内容缺失的错误，需要重视
 - `CRITICAL`: 严重错误，某些组建无法运行，某些任务无法完成。
-- `ERROR`: 记录每个 `Exception` 的详细信息 （traceback 等）
+- `ERROR`: 记录每个 `Exception` 的详细信息 （`traceback` 等）

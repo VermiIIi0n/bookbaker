@@ -92,8 +92,17 @@ class Episode(BaseModel):
              f"<p>{self.notes_translated or self.notes}</p>",
              "<hr>"),
             (f"<p>{line.translated or ''}</p>" for line in self.lines)
-        )
-        )
+        ))
+
+    @property
+    def raw_html(self) -> str:
+        """HTML of the original content"""
+        return '\n'.join(chain(
+            (f"<h3>{self.title}</h3>",
+             f"<p>{self.notes}</p>",
+             "<hr>"),
+            (f"<p>{line.content}</p>" for line in self.lines)
+        ))
 
 
 class Chapter(BaseModel):
@@ -200,7 +209,7 @@ class Task(BaseModel):
     sauce_lang: str = "JA"
     target_lang: str = "ZH"
     crawler: str | None = None
-    translator: str | None = None
-    exporter: str | None = None
+    translator: str | list[str] | None = None
+    exporter: str | list[str] | None = None
     glossaries: list[tuple[str, str]] = Field(default_factory=list)
     extra: dict[str, Any] = Field(default_factory=dict)

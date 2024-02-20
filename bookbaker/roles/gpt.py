@@ -50,9 +50,11 @@ class GPTTranslator(BaseTranslator):
         logger = ctx.logger
         sess = self.backend.new_session()
 
-        prompt = f"Translate JSON values from {sauce_lang} to {target_lang}.\n"\
-            "Keep the original structure of the content.\n"\
+        prompt = (f"Translate JSON values from {sauce_lang} to {target_lang}.\n"
+            "Keep the original structure of the content.\n"
+            "You are allowed to rephrase them to make them more natural and correct errors in original content.\n"
             "If the input is a list, the output order should be the same\n"
+        )
         if task.glossaries:
             prompt += "Translation reference to follow, you will be constantly reminded:\n"
             prompt += '\n'.join(f"{k} : {v}" for k, v in task.glossaries)
