@@ -318,13 +318,13 @@ six = "*"
 
 [[package]]
 name = "gemnine"
-version = "0.1.7"
+version = "0.1.9"
 description = "Wrapper for Gemini AI API"
 optional = false
 python-versions = ">=3.12,<4.0"
 files = [
-    {file = "gemnine-0.1.7-py3-none-any.whl", hash = "sha256:251b911a414bfcc12dc2a75f502841de071c72166aa92e236e274b924d86a01a"},
-    {file = "gemnine-0.1.7.tar.gz", hash = "sha256:eff00432ab03224ac0fdd243eeee8425f80ddcc9b5df905db0a625af06bd72f3"},
+    {file = "gemnine-0.1.9-py3-none-any.whl", hash = "sha256:f2165027b281704b614d54bc5196e9d2f73dd7b6871abc995e18a2fccff035c1"},
+    {file = "gemnine-0.1.9.tar.gz", hash = "sha256:cfe6e3ae056863baf8d5a8c2cfa8ddc1a5013425e53eb1478f2b344dd0a7eaa5"},
 ]
 
 [package.dependencies]
@@ -1372,4 +1372,4 @@ http = ["httpx[http2,socks] (>=0.23.1,<0.24.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "bd45279f6b2e1b2341ad32b9cdf6e098e0169d7c64bee6c5eabcc55cfe26edda"
+content-hash = "fab5814628df40edd9403d9736de5c911f830d2a445320dfdb5972872bb669ee"

@@ -51,10 +51,10 @@ class GPTTranslator(BaseTranslator):
         sess = self.backend.new_session()
 
         prompt = (f"Translate JSON values from {sauce_lang} to {target_lang}.\n"
-            "Keep the original structure of the content.\n"
-            "You are allowed to rephrase them to make them more natural and correct errors in original content.\n"
-            "If the input is a list, the output order should be the same\n"
-        )
+                  "Keep the original structure of the content.\n"
+                  "You are allowed to rephrase them to make them more natural and correct errors in original content.\n"
+                  "If the input is a list, the output order should be the same\n"
+                  )
         if task.glossaries:
             prompt += "Translation reference to follow, you will be constantly reminded:\n"
             prompt += '\n'.join(f"{k} : {v}" for k, v in task.glossaries)
@@ -90,9 +90,9 @@ class GPTTranslator(BaseTranslator):
             if task.glossaries:
                 logger.debug("%s: Sending glossaries", self)
                 sess.append(
-                    Message(role=Role.User, parts=f"[{", ".join(g[0] for g in task.glossaries)}]"))
+                    Message(role=Role.User, content=f"[{", ".join(g[0] for g in task.glossaries)}]"))
                 sess.append(
-                    Message(role=Role.Assistant, parts=f"[{", ".join(g[1] for g in task.glossaries)}]"))
+                    Message(role=Role.Assistant, content=f"[{", ".join(g[1] for g in task.glossaries)}]"))
         remind()
         cycle = 0
 
@@ -119,7 +119,7 @@ class GPTTranslator(BaseTranslator):
             retry = 0
 
             while True:
-                self.backend.seed = randint(0, 1000000)
+                self.backend.seed = randint(0, 10000)
                 resp: str | None = None
                 try:
                     resp = await sess.send(jstr, ensure_json=True)

@@ -178,8 +178,8 @@ pip install -U bookbaker
 - `friendly_name`: `str` 没啥用，助记的
 - `url`: `str` 书籍的网址
 - `crawler`: `str` 爬虫的名字，如果为 `null` 则会自动选择一个合适的爬虫
-- `translator`: `str | list[str]` 翻译器的名字(们), `null` 为不翻译
-- `exporter`: `str | list[str]` 导出器的名字(们), `null` 为不导出，但年轻人导导更健康
+- `translator`: `str | list[str]` 翻译器的名字(们)，`null` 为不翻译。无负载均衡，只是按顺序前仆后继的翻译
+- `exporter`: `str | list[str]` 导出器的名字(们)，`null` 为不导出，但年轻人导导更健康。多填时均会运行。
 - `sauce_lang`: `str` 原文语言，`ISO 639` 格式
 - `target_lang`: `str` 目标语言, `ISO 639` 格式
 - `glossaries`: `list[tuple[str, str]]` 词汇表 例如 `[[Unacceptable, 可接受的], ...]`，可用于译名对照。
@@ -216,7 +216,7 @@ pip install -U bookbaker
 
 首先 `DeepL`/`Gemini AI`/`GPT` 都是基于变形金刚(~~完全胜利~~)的，所以他们共享一些特性。
 
-`DeepL` 每个月免费用户有 5M 免费 `Tokens`，需要国外信用卡注册。但因为生成限制 `Tokens` 太短，一次性丢长句容易造成内容截断，所以是分句子发送的。这导致经常没有足够的语境提供信息，翻译的前后文会不搭调。~~但你就问快不快吧。~~ 另外对词汇表的语言组合有些限制。
+`DeepL` 每个月免费用户有 500K 免费 `Tokens`，需要国外信用卡注册。但因为生成限制 `Tokens` 太短，一次性丢长句容易造成内容截断，所以是分句子发送的。这导致经常没有足够的语境提供信息，翻译的前后文会不搭调。~~但你就问快不快吧。~~ 另外对词汇表的语言组合有些限制。
 
 `Gemini AI` 翻的最好，目前 `API` 免费，速率限制不成问题，速度也不错。但不知为何解除所有`prompt` 安全限制后仍会阻挡一部分内容，有些瑟瑟场面翻不了。另外比起 `GPT` 更容易偶尔摆烂直接吐原文，也不太尊重提供的词汇表。
 
