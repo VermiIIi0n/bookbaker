@@ -3,7 +3,7 @@ from __future__ import annotations
 import ujson as json
 import asyncio
 from random import randint
-from typing import cast, overload
+from typing import overload
 from uuid import uuid4
 from pydantic import Field
 from asynctinydb import Query

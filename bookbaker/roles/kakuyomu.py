@@ -3,7 +3,7 @@ from __future__ import annotations
 import bs4
 import httpx
 import ujson as json
-from typing import Any, cast
+from typing import Any
 from uuid import uuid4
 from pydantic import Field
 from asynctinydb import Query, Document

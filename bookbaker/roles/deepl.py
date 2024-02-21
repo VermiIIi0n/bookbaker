@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import cast, Iterable
 from uuid import uuid4
-from pydantic import Field, BaseModel
-from asynctinydb import Query, Document
-from urllib.parse import urlparse
+from pydantic import Field
+from asynctinydb import Query
 from aiodeepl import Translator
 from .base import BaseTranslator
 from ..classes import Book, Chapter, Episode, Task, Context

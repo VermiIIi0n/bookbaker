@@ -6,9 +6,9 @@ from io import BytesIO
 from pathlib import Path
 from ebooklib import epub
 from pydantic import Field
-from base64 import b64decode, b64encode
+from base64 import b64encode
 from vermils.io import aio
-from ..classes import Book, Context, Chapter, Episode, Task
+from ..classes import Book, Context, Task
 from ..utils import get_url_content
 from .base import BaseExporter
 

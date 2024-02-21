@@ -7,7 +7,6 @@ from typing import Literal, Any
 from pydantic import BaseModel, Field, ConfigDict
 from pathlib import Path
 from asynctinydb import TinyDB, CachingMiddleware, JSONStorage
-from asynctinydb.table import StrID
 from vermils.gadgets.monologger import MonoLogger
 from .classes import Task
 
