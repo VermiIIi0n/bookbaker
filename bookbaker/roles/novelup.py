@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import bs4
 import httpx
 from typing import cast
@@ -12,12 +13,15 @@ from .base import BaseCrawler
 from ..classes import Book, Chapter, Episode, Line, TimeMeta, Context, Task
 
 
-class SyosetuComCrawler(BaseCrawler):
+class NovelUpCrawler(BaseCrawler):
     """
-    Crawler for syosetu.com
+    Crawler for novelup.plus
     """
-    name: str = Field(default_factory=lambda: f"syosetu-com-{str(uuid4())[:8]}")
-    description: str = "A crawler for syosetu.com"
+    name: str = Field(default_factory=lambda: f"novelup-{str(uuid4())[:8]}")
+    description: str = "A crawler for novelup.plus"
+
+    _dt_re = re.compile(r".*?(\d+)\D(\d{1,2})\D(\d{1,2})\D+(\d{1,2})\D(\d{1,2}).*")
+    _ep_ord_re = re.compile(r"^(\d+)")
 
     async def crawl_stream(
             self,
@@ -30,13 +34,13 @@ class SyosetuComCrawler(BaseCrawler):
         url = urlparse(task.url)
         origin = f"{url.scheme}://{url.netloc}"
         logger.info("%s: Crawling URL %s", self, task.url)
-        r = await cli.get(task.url, cookies={"over18": "yes"})
+        r = await cli.get(task.url)
         r.raise_for_status()
 
         soup = bs4.BeautifulSoup(r.text.replace('\u3000', "  "), "xml")
         body = soup.body
-        title = body.find(class_="novel_title").text
-        author = body.find(class_="novel_writername").a.text
+        title = body.find(class_="novel_title").text.strip()
+        author = body.find(class_="novel_author").a.text.strip()
         logger.info("%s:  book %s by %s", self, title, author)
 
         book_query = Query()
@@ -50,12 +54,34 @@ class SyosetuComCrawler(BaseCrawler):
 
         book.url = task.url
 
-        desc = body.find(id="novel_ex")
+        desc = body.find(class_="novel_synopsis")
         for br in desc.find_all('br'):
             br.replace_with(f"\n{br.text}")
         book.description = desc.text.strip()
 
-        indexes = body.find(class_="index_box")
+        info_div = body.find(id="section_episode_info_table")
+        info_tab = info_div.find("table")
+        for tr in info_tab.find_all("tr"):
+            if "ジャンル" in tr.th.text:
+                genres = tr.td.text.strip().split()
+                book.tags.update(genres)
+            elif "タグ" in tr.th.text:
+                tags = tr.td.text.strip().split()
+                book.tags.update(tags)
+            elif "セルフレイティング" in tr.th.text:
+                ratings = tr.td.text
+                if "残酷描写" in ratings:
+                    book.tags.add("残酷描写")
+                if "暴力描写" in ratings:
+                    book.tags.add("暴力描写")
+                if "性的表現" in ratings:
+                    book.tags.add("性的表現")
+            elif "初掲載日" in tr.th.text:
+                book.time_meta.created_at = self._parse_datatime(tr.td.text)
+            elif "最終更新日" in tr.th.text:
+                book.time_meta.updated_at = self._parse_datatime(tr.td.text)
+
+        indexes = body.find(class_="episode_list")
         default_chapter = book.get_chapter('')
 
         if default_chapter is None:
@@ -63,10 +89,10 @@ class SyosetuComCrawler(BaseCrawler):
             book.chapters.append(default_chapter)
         chapter = default_chapter
 
-        for child in indexes.children:
+        for child in indexes.find_all("li"):
             if not isinstance(child, bs4.Tag):
                 continue
-            if "chapter_title" in child["class"]:
+            if "chapter" in child["class"]:
                 chapter_name = child.text.strip()
                 logger.info("%s: Crawling chapter %s", self, chapter_name)
                 old_chapter = book.get_chapter(chapter_name)
@@ -78,21 +104,26 @@ class SyosetuComCrawler(BaseCrawler):
                     logger.debug("%s: Chapter %s retrieved from database",
                                  self, chapter_name)
                     chapter = old_chapter
-            elif "novel_sublist2" in child["class"]:
-                episode_url = cast(str, child.a["href"])
+            else:
+                div = child.find("div")
+                episode_url = cast(str, div.a["href"])
                 if episode_url.startswith("/"):
                     episode_url = f"{origin}{episode_url}"
 
-                subtitle = child.find(class_="subtitle").text.strip()
+                subtitle = div.text.strip()
+                subtitle = self._ep_ord_re.sub(
+                    '', subtitle).strip()  # remove episode number
                 logger.info("%s: Crawling episode %s from %s",
                             self, subtitle, episode_url)
 
-                dates = child.find(class_="long_update")
+                dates = child.find(class_="update_date")
                 created_at = self._parse_datatime(
-                    dates.text)
-                updates = dates.find_all("span")
-                updated_at = self._parse_datatime(
-                    updates[-1]["title"]) if updates else created_at
+                    dates.find("span").text.replace('\n', ' '))
+                updated_at = created_at
+                next_span = dates.find_next_sibling("span")
+                if next_span:
+                    updated_at = self._parse_datatime(
+                        next_span.text.replace('\n', ' '))
 
                 episode = chapter.get_episode(subtitle)
                 if episode is not None:
@@ -133,10 +164,10 @@ class SyosetuComCrawler(BaseCrawler):
 
     def _parse_datatime(self, dt: str) -> datetime:
         try:
-            dt = dt.strip()[:16]
-            date, time = dt.split(' ')
-            year, month, day = map(int, date.split('/'))
-            hour, minute = map(int, time.split(':'))
+            dts = self._dt_re.match(dt)
+            if dts is None:
+                raise ValueError(f"Failed to parse datetime: {dt}")
+            year, month, day, hour, minute = map(int, dts.groups())
             return datetime(
                 year=year, month=month, day=day, hour=hour, minute=minute
             ).astimezone(UTC)
@@ -161,18 +192,13 @@ class SyosetuComCrawler(BaseCrawler):
 
         soup = bs4.BeautifulSoup(r.text.replace('\u3000', "  "), "xml")
         body = soup.body
-        title = body.find(class_="novel_subtitle").text.strip()
-        honbun = body.find(id="novel_honbun")
-        lines = list[Line]()
-        for p in honbun.find_all("p"):
-            p: bs4.Tag
-            for br in p.find_all("br"):
-                br: bs4.Tag
-                br.replace_with(f"\n{br.decode_contents()}")
-            decoded = str(p.decode_contents())
-            if not decoded.strip():
-                decoded = ''  # replace empty lines with empty string
-            lines.append(Line(content=decoded))
+        title = body.find(class_="episode_title").text.strip()
+        honbun = body.find(id="episode_content")
+        for br in honbun.find_all("br"):
+            br: bs4.Tag
+            br.replace_with(f"\n{br.decode_contents()}")
+
+        lines = [Line(content=p) for p in honbun.text.splitlines()]
 
         episode = Episode(
             title=title,
@@ -180,7 +206,7 @@ class SyosetuComCrawler(BaseCrawler):
             time_meta=TimeMeta(
                 created_at=created_at, updated_at=updated_at),
         )
-        preview = body.find(id="novel_p")
+        preview = body.find(class_="novel_afterword")
         if preview:
             episode.notes = preview.text
 

@@ -118,8 +118,9 @@ async def main():
         try:
             task, book, chapter, episode = fut.result()
         except Exception as e:
-            logger.critical("Failed to crawl: %s due to %s", task.url, e)
+            logger.critical("Failed to crawl a url due to %s", e)
             logger.exception(e)
+            continue
 
         if (task.translator is None
                 or task.translator == []

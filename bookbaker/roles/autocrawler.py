@@ -7,6 +7,7 @@ from .base import BaseCrawler
 from .syosetu_com import SyosetuComCrawler
 from .syosetu_org import SyosetuOrgCrawler
 from .kakuyomu import KakuyomuCrawler
+from .novelup import NovelUpCrawler
 from ..classes import Context, Task
 
 
@@ -33,6 +34,8 @@ class AutoCrawler(BaseCrawler):
             crawler = SyosetuOrgCrawler()
         elif hostname.endswith("kakuyomu.jp"):
             crawler = KakuyomuCrawler()
+        elif hostname.endswith("novelup.plus"):
+            crawler = NovelUpCrawler()
         else:
             raise ValueError(f"Cannot determine the crawler for {task.url}")
 
