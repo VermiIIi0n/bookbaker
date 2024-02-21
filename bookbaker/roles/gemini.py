@@ -8,8 +8,8 @@ from pydantic import Field
 from asynctinydb import Query
 from gemnine import Bot, Message, Role
 from ..misc import LANG_NAME_TABLE
-
-from bookbaker.classes import Context, Task
+from ..utils import escape_ruby, unescape_ruby
+from ..classes import Context, Task
 from ..classes import Book, Chapter, Episode
 from .base import BaseTranslator
 
@@ -30,6 +30,8 @@ class GeminiTranslator(BaseTranslator):
     """Interval to remind glossaries"""
     skip_translated: bool = True
     """Skip already translated lines"""
+    convert_ruby: bool = True
+    """Convert <ruby> tags to simpler format for LLMs"""
     backend: Bot = Field(
         default_factory=lambda: Bot(model="models/gemini-pro", api_key=''))
 
@@ -54,17 +56,37 @@ class GeminiTranslator(BaseTranslator):
         sess = self.backend.new_session()
         sess.message_lock = 2  # Prevents first 2 prompts being deleted
 
-        prompt = ("You are an professional translator. "
-                  f"You translate JSON values and text from {
-                      sauce_lang} into fluent and native {target_lang}.\n"
-                  "Add the missing subject to the sentence\n"
-                  "You must not output the original content. Translated noun and pronoun should be consistent\n"
-                  "You are allowed to rephrase them to make them more natural and correct errors in original content.\n"
-                  "For JSON, you should output exact the same structure as input "
-                  "e.g. {\"test_title\": \"りんごはおいしい！\"} -> {\"test_title\": \"苹果真好吃！\"}\n"
-                  "For pure text, you should output exact the same line count as input and do not modify '\\n' symbol\n"
-                  #   "If the input is a list, the output order should be the same\n"
-                  )
+        prompt = (
+            "You are a professional translator, "
+            f"translating text from {sauce_lang} "
+            f"into fluent and native {target_lang}.\n"
+            "Correctly add the missing subject to the sentence.\n"
+            "You must output translated content and must follow translation references. \n"
+            "Rephrase sentences to make them more natural.\n"
+            "For json input, you must output a valid json with same keys and translated values "
+            "e.g. {\"title\": \"りんごはおいしい！\", \"notes\": \"\"} -> {\"title\": \"苹果真好吃！\", \"notes\": \"\"}\n"
+            "For pure text, you must output exact the same line count as input and keep '\\n' and [](^) if any\n"
+            "Good translation examples for Japanese to Chinese:\n"
+            "事故が起こらないように、十分運転にお気を付けてください。\n"
+            "请注意安全驾驶，以免发生事故。\n"
+            "事件の詳しい経過がわかり次第、番組の中でお手伝えいたします。\n"
+            "一旦弄清事情的详细经过，我们将随时在节目中报道。\n"
+            "並んでいるね。\n"
+            "这么多人排队啊。\n"
+            "あまりにおかしくて涙が出た。\n"
+            "太搞笑了，都笑到流泪了。\n"
+            "彼の言うことは、あるいは本当かもしれない。\n"
+            "他说的或许是真的。\n"
+            "「きみ、あたまいいね。」「よく言われるんだよ。」\n"
+            "“你很聪明嘛！”“大家都这么说。”\n"
+            "周囲を完全に包囲したから、犯人はもう袋のねずみだ。\n"
+            "已经完全包围了周围，犯人已经是老鼠进洞了。\n"
+            "四下里都包围得如铁桶一般，这下他可是插翅难飞了。\n"
+            "我々は金大郎飴のように同じような車を作るつもりはない。\n"
+            "我们不打算生产过于雷同的车型。\n"
+            "「いつか作家になるか、起業して楽しく暮らす」という夢を持っていた。\n"
+            "我曾有个梦想，当个作家，或是自己做个小生意，过上幸福的生活。\n"
+        )
         if task.glossaries:
             prompt += "Translation reference to follow, you will be constantly reminded:\n"
             prompt += '\n'.join(f"{k} : {v}" for k, v in task.glossaries)
@@ -77,12 +99,6 @@ class GeminiTranslator(BaseTranslator):
                 "tags": list(book.tags),
             }
             prompt += f"{json.dumps(book_full_meta, ensure_ascii=False)}\n"
-        if chapter is not None:
-            prompt += "\nThe chapter you are translating:\n"
-            chapter_meta: dict[str, str | None] = {
-                "title": chapter.title,
-            }
-            prompt += f"{json.dumps(chapter_meta, ensure_ascii=False)}\n"
 
         prompt += "\nThe episode you are translating:\n"
         episode_meta: dict[str, str | None] = {
@@ -124,6 +140,10 @@ class GeminiTranslator(BaseTranslator):
                 pstr = json.dumps(c, ensure_ascii=False)
             else:
                 pstr = '\n'.join(map(lambda x: x.replace('\n', r"\n"), c))
+
+            if self.convert_ruby:
+                pstr = escape_ruby(pstr)
+
             logger.debug("%s: Sending prompt: %s", self, pstr)
             await sess.trim(self.max_tokens)
             sess_bak = sess.messages.copy()
@@ -134,6 +154,10 @@ class GeminiTranslator(BaseTranslator):
                 resp: str = "None"
                 try:
                     resp = await sess.send(pstr)
+
+                    if self.convert_ruby:
+                        resp = unescape_ruby(resp)
+
                     logger.debug("%s: Received response: %s", self, resp)
                     if isinstance(c, list):
                         obj = resp.split('\n')
@@ -185,7 +209,7 @@ class GeminiTranslator(BaseTranslator):
             book.series_translated = book_meta["series"]
 
         if chapter is not None and chapter.title_translated is None:
-            chapter_meta = {
+            chapter_meta: dict[str, str | None] = {
                 "title": chapter.title
             }
             chapter_meta = await translate(chapter_meta)

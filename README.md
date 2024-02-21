@@ -103,6 +103,7 @@ pip install -U bookbaker
       "max_tokens": null,
       "remind_interval": 3,
       "skip_translated": false,
+      "convert_ruby": true,
       "max_reply_tokens": null,
       "backend": {
         "model": "models\/gemini-pro",

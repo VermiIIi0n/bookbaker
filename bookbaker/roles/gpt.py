@@ -9,8 +9,8 @@ from pydantic import Field
 from asynctinydb import Query
 from gptbot import Bot, Message, Role, Model
 from ..misc import LANG_NAME_TABLE
-
-from bookbaker.classes import Context, Task
+from ..utils import escape_ruby, unescape_ruby
+from ..classes import Context, Task
 from ..classes import Book, Chapter, Episode
 from .base import BaseTranslator
 
@@ -31,6 +31,8 @@ class GPTTranslator(BaseTranslator):
     """Interval to remind glossaries"""
     skip_translated: bool = True
     """Skip already translated lines"""
+    convert_ruby: bool = True
+    """Convert <ruby> tags to simpler format for LLMs"""
     backend: Bot = Field(
         default_factory=lambda: Bot(model=Model.GPT4TurboPreview, api_key=''))
 
@@ -54,16 +56,18 @@ class GPTTranslator(BaseTranslator):
         logger = ctx.logger
         sess = self.backend.new_session()
 
-        prompt = ("You are an professional translator. "
-                  f"Translate JSON values from {sauce_lang} to {target_lang}.\n"
-                  "Add the missing subject to the sentence\.\n"
-                  "You are allowed to rephrase them to make them more natural and correct errors in original content.\n"
-                  "For JSON, you should output exact the same structure as input\n"
-                  "For pure text, you should output exact the same line count as input and do not modify '\\n' symbol\n"
-                  #   "If the input is a list, the output order should be the same\n"
-                  )
+        prompt = (
+            "You are a professional translator, "
+            f"translating text from {sauce_lang} "
+            f"into fluent and native {target_lang}.\n"
+            "Add the missing subject to the sentence.\n"
+            "Translated nouns and pronouns must be consistent\n"
+            "Rephrase sentences to make them more natural, correct errors in original content if any.\n"
+            "For json input, you must output a valid json with same keys and translated values "
+            "For pure text, you must output exact the same line count as input and keep '\\n' and [](^) if any\n"
+        )
         if task.glossaries:
-            prompt += "Translation reference to follow, you will be constantly reminded:\n"
+            prompt += "Translation reference you must follow, you will be constantly reminded:\n"
             prompt += '\n'.join(f"{k} : {v}" for k, v in task.glossaries)
         if book is not None:
             prompt += "\nThe book you are translating:\n"
@@ -74,12 +78,6 @@ class GPTTranslator(BaseTranslator):
                 "tags": list(book.tags),
             }
             prompt += f"{json.dumps(book_full_meta, ensure_ascii=False)}\n"
-        if chapter is not None:
-            prompt += "\nThe chapter you are translating:\n"
-            chapter_meta: dict[str, str | None] = {
-                "title": chapter.title,
-            }
-            prompt += f"{json.dumps(chapter_meta, ensure_ascii=False)}\n"
 
         prompt += "\nThe episode you are translating:\n"
         episode_meta: dict[str, str | None] = {
@@ -119,6 +117,10 @@ class GPTTranslator(BaseTranslator):
                 pstr = json.dumps(c, ensure_ascii=False)
             else:
                 pstr = '\n'.join(map(lambda x: x.replace('\n', r"\n"), c))
+
+            if self.convert_ruby:
+                pstr = escape_ruby(pstr)
+
             logger.debug("%s: Sending prompt: %s", self, pstr)
             sess.trim(self.max_tokens)
             sess_bak = sess.messages.copy()
@@ -127,23 +129,13 @@ class GPTTranslator(BaseTranslator):
 
             while True:
                 self.backend.seed = randint(0, 10000)
-                # resp: str | None = None
-                # try:
-                #     resp = await sess.send(jstr, ensure_json=True)
-                #     logger.debug("%s: Received response: %s", self, resp)
-                #     obj = json.loads(cast(str, resp))
-                #     keys = set(c.keys()) if isinstance(c, dict) else set(("list",))
-                #     if set(obj.keys()) != keys:
-                #         raise ValueError("Key mismatch")
-                #     if isinstance(c, list):
-                #         if len(obj["list"]) != len(c):
-                #             raise ValueError("Length mismatch")
-                #         return obj["list"]
-
-                #     return obj
                 resp: str = "None"
                 try:
                     resp = await sess.send(pstr, ensure_json=False)
+
+                    if self.convert_ruby:
+                        resp = unescape_ruby(resp)
+
                     logger.debug("%s: Received response: %s", self, resp)
                     if isinstance(c, list):
                         obj = resp.split('\n')
@@ -195,7 +187,7 @@ class GPTTranslator(BaseTranslator):
             book.series_translated = book_meta["series"]
 
         if chapter is not None and chapter.title_translated is None:
-            chapter_meta = {
+            chapter_meta: dict[str, str | None] = {
                 "title": chapter.title
             }
             chapter_meta = await translate(chapter_meta)

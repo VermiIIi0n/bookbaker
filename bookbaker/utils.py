@@ -1,3 +1,5 @@
+import re
+import bs4
 from base64 import b64decode
 from vermils.io import aio
 from .classes import Context
@@ -20,3 +22,33 @@ async def get_url_content(url: str, origin: str, ctx: Context) -> bytes:
     else:
         raise ValueError(f"Cannot download URL: {url}")
     return data
+
+_ruby_re = re.compile(r"<ruby>.*?<\/ruby>")
+_un_ruby_re = re.compile(r"\s?\[.*?\]\(\^.*?\)\s?")
+
+
+def escape_ruby(s: str) -> str:
+    ruby_matches = _ruby_re.findall(s)
+    for match in ruby_matches:
+        base = ''
+        top = ''
+        soup = bs4.BeautifulSoup(match, "xml")
+        for child in soup.ruby.children:
+            if isinstance(child, bs4.NavigableString):
+                base += child.strip('\n')
+            elif child.name == "rb":
+                base += child.text.strip('\n')
+            elif child.name == "rt":
+                top += child.text.strip('\n')
+        replacement = f" [{base}](^{top}) "
+        s = s.replace(match, replacement)
+    return s
+
+
+def unescape_ruby(s: str) -> str:
+    ruby_matches = _un_ruby_re.findall(s)
+    for match in ruby_matches:
+        base, top = match[2:-2].split("](^")
+        replacement = f"<ruby><rb>{base}</rb><rt>{top}</rt></ruby>"
+        s = s.replace(match, replacement)
+    return s
