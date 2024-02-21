@@ -29,8 +29,8 @@ class SyosetuComCrawler(BaseCrawler):
         cli = ctx.client
         url = urlparse(task.url)
         origin = f"{url.scheme}://{url.netloc}"
-        logger.info("Crawling URL %s", task.url)
-        r = await cli.get(task.url)
+        logger.info("%s: Crawling URL %s", self, task.url)
+        r = await cli.get(task.url, cookies={"over18": "yes"})
         r.raise_for_status()
 
         soup = bs4.BeautifulSoup(r.text.replace('\u3000', "  "), "xml")
@@ -68,7 +68,7 @@ class SyosetuComCrawler(BaseCrawler):
                 continue
             if "chapter_title" in child["class"]:
                 chapter_name = child.text.strip()
-                logger.info("Crawling chapter %s", chapter_name)
+                logger.info("%s: Crawling chapter %s", self, chapter_name)
                 old_chapter = book.get_chapter(chapter_name)
                 if old_chapter is None:
                     logger.debug("%s: New chapter %s created", self, chapter_name)
@@ -100,8 +100,8 @@ class SyosetuComCrawler(BaseCrawler):
                                  self, subtitle)
                     if episode.time_meta.created_at is None:
                         episode.time_meta.created_at = created_at
-                    if episode.time_meta.updated_at is None:
-                        episode.time_meta.updated_at = updated_at
+                    episode.time_meta.updated_at = updated_at
+                    created_at = episode.time_meta.created_at
 
                     if episode.time_meta.saved_at < updated_at:
                         logger.debug("%s: Episode %s updated", self, subtitle)
@@ -151,7 +151,7 @@ class SyosetuComCrawler(BaseCrawler):
             created_at: datetime | None = None,
             updated_at: datetime | None = None,
     ) -> Episode:
-        r = await client.get(url)
+        r = await client.get(url, cookies={"over18": "yes"})
         r.raise_for_status()
 
         if created_at is not None:

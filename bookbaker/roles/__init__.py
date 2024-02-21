@@ -8,3 +8,4 @@ from .autocrawler import *
 from .epub import *
 from .esj import *
 from .masiro import *
+from .kakuyomu import *

@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from .base import BaseCrawler
 from .syosetu_com import SyosetuComCrawler
 from .syosetu_org import SyosetuOrgCrawler
+from .kakuyomu import KakuyomuCrawler
 from ..classes import Context, Task
 
 
@@ -26,10 +27,12 @@ class AutoCrawler(BaseCrawler):
         crawler: BaseCrawler
         if hostname is None:
             raise ValueError(f"Invalid URL: {task.url}")
-        if hostname.endswith('syosetu.com'):
+        if hostname.endswith("syosetu.com"):
             crawler = SyosetuComCrawler()
-        elif hostname.endswith('syosetu.org'):
+        elif hostname.endswith("syosetu.org"):
             crawler = SyosetuOrgCrawler()
+        elif hostname.endswith("kakuyomu.jp"):
+            crawler = KakuyomuCrawler()
         else:
             raise ValueError(f"Cannot determine the crawler for {task.url}")
 

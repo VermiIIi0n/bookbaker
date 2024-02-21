@@ -120,8 +120,8 @@ class SyosetuOrgCrawler(BaseCrawler):
                                  self, subtitle)
                     if episode.time_meta.created_at is None:
                         episode.time_meta.created_at = created_at
-                    if episode.time_meta.updated_at is None:
-                        episode.time_meta.updated_at = updated_at
+                    episode.time_meta.updated_at = updated_at
+                    created_at = episode.time_meta.created_at
 
                     if episode.time_meta.saved_at < updated_at:
                         logger.debug("%s: Episode %s updated", self, subtitle)
