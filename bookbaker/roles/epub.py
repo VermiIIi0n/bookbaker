@@ -58,7 +58,8 @@ class EpubExporter(BaseExporter):
             try:
                 cover_image = await get_url_content(book.cover.url, task.url, ctx)
                 if cover_image:
-                    epub_book.set_cover(file_name=book.cover.url, content=cover_image)
+                    epub_book.set_cover(
+                        file_name=book.cover.alt or "cover", content=cover_image)
             except Exception as e:
                 logger.warning(
                     "%s: Failed to set cover image for book: %s", self, book.title)
@@ -93,16 +94,14 @@ class EpubExporter(BaseExporter):
                 cover_image: bytes | None = None
                 try:
                     cover_image = await get_url_content(chapter.cover.url, task.url, ctx)
-                    epub_chapter.add_item(epub.EpubImage(
-                        file_name=chapter.cover.url,
-                        content=cover_image,
-                        media_type="image/*"))
+                    epub_chapter.content += f"<img src=\"data:image/*;base64,{
+                        b64encode(cover_image).decode()}\" />"
                 except Exception as e:
                     logger.warning(
                         "%s: Failed to set cover image for chapter: %s", self, chapter.title)
                     logger.exception(e)
             epub_book.add_item(epub_chapter)
-            # epub_book.toc.append(epub_chapter)
+            epub_book.toc.append(epub_chapter)
             for episode in chapter.episodes:
                 if self.use_translated:
                     episode_title = episode.title_translated or episode.title

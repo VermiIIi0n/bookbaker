@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bookbaker"
-version = "0.1.4"
+version = "0.1.5"
 description = "Components for auto-translation of novel and manga."
 authors = ["VermiIIi0n <dungeon.behind0t@icloud.com>"]
 readme = "README.md"
