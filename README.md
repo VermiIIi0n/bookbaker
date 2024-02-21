@@ -20,7 +20,7 @@
 本品特性：
 
 1. 自带几个常见日轻爬虫，爬取网站文章
-2. 支持 `DeepL`, `Gemini AI`, `ChatGPT` 等烤肉机
+2. 支持 `DeepL`, `Gemini AI`, `ChatGPT`, `Sakura`(`GPT` 兼容) 等烤肉机
 3. 支持导出至 `EPUB`, 自动发布至 真白萌，ESJ 等站点（未完工）
 4. 自带小型 NoSQL 数据库，方便查看编辑
 5. 模块化设计，方便自行定制爬虫，烤肉机，导出器
@@ -29,6 +29,10 @@
 ## NOTICE
 
 **本品仍在 Beta 开发阶段，用量用法随时改变，效果随机出错，请自行斟酌。** 愿意测试者也许可以白嫖 `API Key` ? （数量有限不保证）
+
+## Community
+
+更多机翻内容和社区支持可移步[这里](https://books.fishhawk.top/)
 
 ## Installation
 

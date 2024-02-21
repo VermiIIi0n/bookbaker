@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bookbaker"
-version = "0.1.1"
+version = "0.1.2"
 description = "Components for auto-translation of novel and manga."
 authors = ["VermiIIi0n <dungeon.behind0t@icloud.com>"]
 readme = "README.md"
@@ -32,7 +32,7 @@ pydantic = "^2.6.1"
 async-tinydb = "^1.7.1"
 pillow = "^10.2.0"
 aiodeepl = "^0.1.4"
-ngptbot = "^0.3.2"
+ngptbot = "^0.3.3"
 gemnine = "^0.1.9"
 beautifulsoup4 = "^4.12.3"
 lxml = "^5.1.0"

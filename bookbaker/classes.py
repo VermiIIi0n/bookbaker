@@ -40,6 +40,7 @@ class Line(BaseModel):
     """
     content: str
     translated: str | None = None
+    candidates: dict[str, str] = Field(default_factory=dict)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Line):

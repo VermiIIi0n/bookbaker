@@ -126,10 +126,6 @@ async def main():
                 or action not in ("translate", "all")):
             continue
 
-        if episode.fully_translated:
-            logger.info("Episode %s is skipped for translation", episode.title)
-            continue
-
         translators = list[BaseTranslator](
             [get_role(task.translator)]
             if isinstance(task.translator, str)

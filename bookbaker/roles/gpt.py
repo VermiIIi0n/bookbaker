@@ -42,6 +42,10 @@ class GPTTranslator(BaseTranslator):
             chapter: Chapter | None = None,
             book: Book | None = None,
     ) -> Episode:
+
+        if episode.fully_translated and self.skip_translated:
+            return episode
+
         cli = ctx.client
         self.backend._cli = cli
         db = ctx.db
@@ -50,10 +54,13 @@ class GPTTranslator(BaseTranslator):
         logger = ctx.logger
         sess = self.backend.new_session()
 
-        prompt = (f"Translate JSON values from {sauce_lang} to {target_lang}.\n"
-                  "Keep the original structure of the content.\n"
+        prompt = ("You are an professional translator. "
+                  f"Translate JSON values from {sauce_lang} to {target_lang}.\n"
+                  "Add the missing subject to the sentence\.\n"
                   "You are allowed to rephrase them to make them more natural and correct errors in original content.\n"
-                  "If the input is a list, the output order should be the same\n"
+                  "For JSON, you should output exact the same structure as input\n"
+                  "For pure text, you should output exact the same line count as input and do not modify '\\n' symbol\n"
+                  #   "If the input is a list, the output order should be the same\n"
                   )
         if task.glossaries:
             prompt += "Translation reference to follow, you will be constantly reminded:\n"
@@ -88,7 +95,7 @@ class GPTTranslator(BaseTranslator):
 
         def remind():
             if task.glossaries:
-                logger.debug("%s: Sending glossaries", self)
+                logger.debug("%s: Sending reminder", self)
                 sess.append(
                     Message(role=Role.User, content=f"[{", ".join(g[0] for g in task.glossaries)}]"))
                 sess.append(
@@ -108,11 +115,11 @@ class GPTTranslator(BaseTranslator):
                 c: list[str] | dict[str, str | None]
         ) -> list[str] | dict[str, str | None]:
             nonlocal cycle
-            if isinstance(c, list):
-                jstr = json.dumps({"list": c}, ensure_ascii=False)
+            if isinstance(c, dict):
+                pstr = json.dumps(c, ensure_ascii=False)
             else:
-                jstr = json.dumps(c, ensure_ascii=False)
-            logger.debug("%s: Sending prompt: %s", self, jstr)
+                pstr = '\n'.join(map(lambda x: x.replace('\n', r"\n"), c))
+            logger.debug("%s: Sending prompt: %s", self, pstr)
             sess.trim(self.max_tokens)
             sess_bak = sess.messages.copy()
 
@@ -120,18 +127,38 @@ class GPTTranslator(BaseTranslator):
 
             while True:
                 self.backend.seed = randint(0, 10000)
-                resp: str | None = None
+                # resp: str | None = None
+                # try:
+                #     resp = await sess.send(jstr, ensure_json=True)
+                #     logger.debug("%s: Received response: %s", self, resp)
+                #     obj = json.loads(cast(str, resp))
+                #     keys = set(c.keys()) if isinstance(c, dict) else set(("list",))
+                #     if set(obj.keys()) != keys:
+                #         raise ValueError("Key mismatch")
+                #     if isinstance(c, list):
+                #         if len(obj["list"]) != len(c):
+                #             raise ValueError("Length mismatch")
+                #         return obj["list"]
+
+                #     return obj
+                resp: str = "None"
                 try:
-                    resp = await sess.send(jstr, ensure_json=True)
+                    resp = await sess.send(pstr, ensure_json=False)
                     logger.debug("%s: Received response: %s", self, resp)
-                    obj = json.loads(cast(str, resp))
-                    keys = set(c.keys()) if isinstance(c, dict) else set(("list",))
-                    if set(obj.keys()) != keys:
-                        raise ValueError("Key mismatch")
                     if isinstance(c, list):
-                        if len(obj["list"]) != len(c):
+                        obj = resp.split('\n')
+                        obj = list(
+                            filter(None, map(lambda x: x.replace(r"\n", '\n'), obj)))
+                        if not isinstance(obj, list):
+                            raise TypeError("Expected list, got dict")
+                        if len(obj) != len(c):
                             raise ValueError("Length mismatch")
-                        return obj["list"]
+                    else:
+                        obj = json.loads(resp)
+                        if not isinstance(obj, dict):
+                            raise TypeError("Expected dict, got list")
+                        if obj.keys() != c.keys():
+                            raise ValueError("Key mismatch")
 
                     return obj
 
@@ -195,7 +222,9 @@ class GPTTranslator(BaseTranslator):
                 translated = await translate(contents)
                 for j, v in zip(indexes, translated):
                     o = episode.lines[j].content
-                    episode.lines[j].translated = v
+                    line = episode.lines[j]
+                    line.translated = v
+                    line.candidates[self.name] = v
                     if not v.strip():
                         logger.warning("%s: Empty translation for %d", self, o)
                 indexes.clear()
@@ -205,7 +234,16 @@ class GPTTranslator(BaseTranslator):
         if indexes:
             translated = await translate(contents)
             for j, v in zip(indexes, translated):
-                episode.lines[j].translated = v
+                line = episode.lines[j]
+                line.translated = v
+                line.candidates[self.name] = v
+                for j, v in zip(indexes, translated):
+                    o = episode.lines[j].content
+                    line = episode.lines[j]
+                    line.translated = v
+                    line.candidates[self.name] = v
+                    if not v.strip():
+                        logger.warning("%s: Empty translation for %s", self, o)
 
         q = Query()
         if book is not None:

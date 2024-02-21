@@ -41,6 +41,10 @@ class GeminiTranslator(BaseTranslator):
             chapter: Chapter | None = None,
             book: Book | None = None,
     ) -> Episode:
+
+        if episode.fully_translated and self.skip_translated:
+            return episode
+
         cli = ctx.client
         self.backend._cli = cli
         db = ctx.db
@@ -50,10 +54,16 @@ class GeminiTranslator(BaseTranslator):
         sess = self.backend.new_session()
         sess.message_lock = 2  # Prevents first 2 prompts being deleted
 
-        prompt = (f"Translate JSON values from {sauce_lang} into fluent and native {target_lang}.\n"
-                  "Keep the original structure of the content.\n"
-                  "You must not output the original content.\n"
-                  "If the input is a list, the output order should be the same\n"
+        prompt = ("You are an professional translator. "
+                  f"You translate JSON values and text from {
+                      sauce_lang} into fluent and native {target_lang}.\n"
+                  "Add the missing subject to the sentence\n"
+                  "You must not output the original content. Translated noun and pronoun should be consistent\n"
+                  "You are allowed to rephrase them to make them more natural and correct errors in original content.\n"
+                  "For JSON, you should output exact the same structure as input "
+                  "e.g. {\"test_title\": \"りんごはおいしい！\"} -> {\"test_title\": \"苹果真好吃！\"}\n"
+                  "For pure text, you should output exact the same line count as input and do not modify '\\n' symbol\n"
+                  #   "If the input is a list, the output order should be the same\n"
                   )
         if task.glossaries:
             prompt += "Translation reference to follow, you will be constantly reminded:\n"
@@ -80,23 +90,21 @@ class GeminiTranslator(BaseTranslator):
             "notes": episode.notes,
         }
         prompt += f"{json.dumps(episode_meta, ensure_ascii=False)}\n"
-        prompt += ("\nYou can start translating now: {\"series\": null, \"test_text\": \"Apple is yummy!\","
-                   "\"test_array\": [\"Hello, world!\", \"How are you?\"]}"
-                   )
+        prompt += (
+            "\nYou can start translating now: {\"test_en\": \"りんごはおいしい！\", \"test_zh\": \"りんごはおいしい！\"")
 
         logger.debug("%s: generated prompt: %s", self, prompt)
 
         sess.append(Message(role=Role.User, parts=prompt))
-        sess.append(Message(role=Role.Model, parts="{\"series\": null, \"test_text\": \"苹果很好吃！\""
-                            ",\"test_array\": [\"你好，世界！\", \"你好吗？\"]}"))
+        sess.append(Message(role=Role.Model,
+                    parts="{\"test_en\": \"Apple is yummy!, \"test_zh\": \"苹果很好吃！\""))
 
         def remind():
-            if task.glossaries:
-                logger.debug("%s: Sending glossaries", self)
-                sess.append(
-                    Message(role=Role.User, parts=f"[{", ".join(g[0] for g in task.glossaries)}]"))
-                sess.append(
-                    Message(role=Role.Model, parts=f"[{", ".join(g[1] for g in task.glossaries)}]"))
+            logger.debug("%s: Sending reminder", self)
+            sess.append(
+                Message(role=Role.User, parts=f"{prompt}\n[{", ".join(g[0] for g in task.glossaries)}]"))
+            sess.append(
+                Message(role=Role.Model, parts=f"[{", ".join(g[1] for g in task.glossaries)}]"))
         remind()
         cycle = 0
 
@@ -112,25 +120,31 @@ class GeminiTranslator(BaseTranslator):
                 c: list[str] | dict[str, str | None]
         ) -> list[str] | dict[str, str | None]:
             nonlocal cycle
-            jstr = json.dumps(c, ensure_ascii=False)
-            logger.debug("%s: Sending prompt: %s", self, jstr)
+            if isinstance(c, dict):
+                pstr = json.dumps(c, ensure_ascii=False)
+            else:
+                pstr = '\n'.join(map(lambda x: x.replace('\n', r"\n"), c))
+            logger.debug("%s: Sending prompt: %s", self, pstr)
             await sess.trim(self.max_tokens)
             sess_bak = sess.messages.copy()
 
             retry = 0
 
             while True:
-                resp: str | None = None
+                resp: str = "None"
                 try:
-                    resp = await sess.send(jstr)
+                    resp = await sess.send(pstr)
                     logger.debug("%s: Received response: %s", self, resp)
-                    obj = json.loads(cast(str, resp))
                     if isinstance(c, list):
+                        obj = resp.split('\n')
+                        obj = list(
+                            filter(None, map(lambda x: x.replace(r"\n", '\n'), obj)))
                         if not isinstance(obj, list):
                             raise TypeError("Expected list, got dict")
                         if len(obj) != len(c):
                             raise ValueError("Length mismatch")
                     else:
+                        obj = json.loads(resp)
                         if not isinstance(obj, dict):
                             raise TypeError("Expected dict, got list")
                         if obj.keys() != c.keys():
@@ -198,7 +212,9 @@ class GeminiTranslator(BaseTranslator):
                 translated = await translate(contents)
                 for j, v in zip(indexes, translated):
                     o = episode.lines[j].content
-                    episode.lines[j].translated = v
+                    line = episode.lines[j]
+                    line.translated = v
+                    line.candidates[self.name] = v
                     if not v.strip():
                         logger.warning("%s: Empty translation for %s", self, o)
                 indexes.clear()
@@ -208,7 +224,11 @@ class GeminiTranslator(BaseTranslator):
         if indexes:
             translated = await translate(contents)
             for j, v in zip(indexes, translated):
-                episode.lines[j].translated = v
+                line = episode.lines[j]
+                line.translated = v
+                line.candidates[self.name] = v
+                if not v.strip():
+                    logger.warning("%s: Empty translation for %s", self, o)
 
         q = Query()
         if book is not None:
