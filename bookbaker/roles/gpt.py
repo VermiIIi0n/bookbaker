@@ -54,7 +54,8 @@ class GPTTranslator(BaseTranslator):
         sauce_lang = LANG_NAME_TABLE.get(task.sauce_lang.upper(), task.sauce_lang)
         target_lang = LANG_NAME_TABLE.get(task.target_lang.upper(), task.target_lang)
         logger = ctx.logger
-        sess = self.backend.new_session()
+        sess = task.extra.get(self.name, self.backend.new_session())
+        task.extra[self.name] = sess
 
         prompt = (
             "You are a professional translator, "

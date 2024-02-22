@@ -48,7 +48,10 @@ def escape_ruby(s: str) -> str:
 def unescape_ruby(s: str) -> str:
     ruby_matches = _un_ruby_re.findall(s)
     for match in ruby_matches:
-        base, top = match[2:-2].split("](^")
+        base: str
+        top: str
+        base, top = match[1:-1].split("](^")
+        base, top = base.strip(' '), top.strip(' ')
         replacement = f"<ruby><rb>{base}</rb><rt>{top}</rt></ruby>"
         s = s.replace(match, replacement)
     return s

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import httpx
+import asyncio
 from typing import Any
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, field_validator, ConfigDict
+from pydantic import Field, PrivateAttr
 from asynctinydb import TinyDB
 from datetime import datetime, UTC
 from itertools import chain
@@ -214,3 +216,8 @@ class Task(BaseModel):
     exporter: str | list[str] | None = None
     glossaries: list[tuple[str, str]] = Field(default_factory=list)
     extra: dict[str, Any] = Field(default_factory=dict)
+    _lock: asyncio.Lock = PrivateAttr(default_factory=asyncio.Lock)
+
+    @property
+    def lock(self) -> asyncio.Lock:
+        return self._lock

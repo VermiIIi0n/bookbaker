@@ -53,7 +53,8 @@ class GeminiTranslator(BaseTranslator):
         sauce_lang = LANG_NAME_TABLE.get(task.sauce_lang.upper(), task.sauce_lang)
         target_lang = LANG_NAME_TABLE.get(task.target_lang.upper(), task.target_lang)
         logger = ctx.logger
-        sess = self.backend.new_session()
+        sess = task.extra.get(self.name, self.backend.new_session())
+        task.extra[self.name] = sess
         sess.message_lock = 2  # Prevents first 2 prompts being deleted
 
         prompt = (

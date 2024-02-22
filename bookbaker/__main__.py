@@ -105,14 +105,57 @@ async def main():
     streams = list[AsyncGenerator[
         tuple[Task, Book, Chapter, Episode], None]]()
 
+    async def crawl(crawler: BaseCrawler, t: Task, ctx: Context):
+        async with t.lock:
+            async for c in crawler.crawl_stream(t, ctx):
+                t.lock.release()
+                yield c
+                await t.lock.acquire()
+
     if action in ("crawl", "translate", "all"):
         for t in config.tasks:
             crawler: BaseCrawler = AutoCrawler() if t.crawler is None else get_role(t.crawler)
             logger.info("Book %s (%s) added to crawl queue", t.friendly_name, t.url)
-            streams.append(crawler.crawl_stream(
+            streams.append(crawl(
+                crawler,
                 t,
                 ctx=ctx
             ))
+
+    async def translate(task: Task, book: Book, chapter: Chapter, episode: Episode):
+        if (task.translator is None
+                or task.translator == []
+                or action not in ("translate", "all")):
+            return
+        async with task.lock:
+            translators = list[BaseTranslator](
+                [get_role(task.translator)]
+                if isinstance(task.translator, str)
+                else [get_role(t) for t in task.translator]
+            )
+            for translator in translators:
+                logger.info("Translating %s with %s", episode.title, translator)
+
+                try:
+                    episode = await translator.translate(
+                        episode,
+                        task,
+                        ctx,
+                        chapter=chapter,
+                        book=book,
+                    )
+                except Exception as e:
+                    logger.exception(e)
+                    if translator is translators[-1]:
+                        logger.critical(
+                            "Failed to translate %s with the last translator %s",
+                            episode.title, translator)
+                    else:
+                        logger.warning("Failed to translate %s with %s",
+                                       episode.title, translator)
+
+    loop = asyncio.get_running_loop()
+    aiotasks = list[asyncio.Task]()
 
     async for fut in select(streams, return_future=True):
         try:
@@ -122,36 +165,9 @@ async def main():
             logger.exception(e)
             continue
 
-        if (task.translator is None
-                or task.translator == []
-                or action not in ("translate", "all")):
-            continue
+        aiotasks.append(loop.create_task(translate(task, book, chapter, episode)))
 
-        translators = list[BaseTranslator](
-            [get_role(task.translator)]
-            if isinstance(task.translator, str)
-            else [get_role(t) for t in task.translator]
-        )
-        for translator in translators:
-            logger.info("Translating %s with %s", episode.title, translator)
-
-            try:
-                episode = await translator.translate(
-                    episode,
-                    task,
-                    ctx,
-                    chapter=chapter,
-                    book=book,
-                )
-            except Exception as e:
-                logger.exception(e)
-                if translator is translators[-1]:
-                    logger.critical(
-                        "Failed to translate %s with the last translator %s",
-                        episode.title, translator)
-                else:
-                    logger.warning("Failed to translate %s with %s",
-                                   episode.title, translator)
+    await asyncio.gather(*aiotasks)
 
     if action in ("export", "all"):
         q = Query()
