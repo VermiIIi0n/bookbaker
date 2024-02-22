@@ -58,17 +58,30 @@ class GPTTranslator(BaseTranslator):
         task.extra[self.name] = sess
 
         prompt = (
-            "You are a professional translator, "
-            f"translating text from {sauce_lang} "
-            f"into fluent and native {target_lang}.\n"
-            "Add the missing subject to the sentence.\n"
-            "Translated nouns and pronouns must be consistent\n"
-            "Rephrase sentences to make them more natural, correct errors in original content if any.\n"
-            "For json input, you must output a valid json with same keys and translated values "
-            "For pure text, you must output exact the same line count as input and keep '\\n' and [](^) if any\n"
+            "You're a professional translator, "
+            f"converting text from {sauce_lang} to {target_lang}. "
+            "Correctly add missing subject and follow references. "
+            f"Rephrase for {target_lang} naturalness and correct errors. "
+            "For JSON, maintain keys with translated values. "
+            "Keep line count for pure text and preserve '\\n' and [](^) if present. "
+            "Good translation examples for Japanese to Chinese:\n"
+            "西に傾きかかった太陽は、この丘の裾遠く広がった有明の入り江の上に、長く曲折しつつはるか水平線の両端に消え入る白い沙丘の上に今は力なく其の光を投げていた。\n"
+            "西斜的太阳，无力地照射着山脚下向远处扩展的有明海海湾，照射着蜿蜒曲折地消失在海平线远方的白色沙丘。\n"
+            "事件の詳しい経過がわかり次第、番組の中でお手伝えいたします。\n"
+            "一旦弄清事情的详细经过，我们将随时在节目中报道。\n"
+            "並んでいるね。\n"
+            "这么多人排队啊。\n"
+            "彼の言うことは、あるいは本当かもしれない。\n"
+            "他说的或许是真的。\n"
+            "「きみ、あたまいいね。」「よく言われるんだよ。」\n"
+            "“你很聪明嘛！”“大家都这么说。”\n"
+            "周囲を完全に包囲したから、犯人はもう袋のねずみだ。\n"
+            "四下里都包围得如铁桶一般，这下他可是插翅难飞了。\n"
+            "「いつか作家になるか、起業して楽しく暮らす」という夢を持っていた。\n"
+            "我曾有个梦想，当个作家，或是自己做个小生意，过上幸福的生活。\n"
         )
         if task.glossaries:
-            prompt += "Translation reference you must follow, you will be constantly reminded:\n"
+            prompt += "Translation reference you must follow:\n"
             prompt += '\n'.join(f"{k} : {v}" for k, v in task.glossaries)
         if book is not None:
             prompt += "\nThe book you are translating:\n"
@@ -96,7 +109,7 @@ class GPTTranslator(BaseTranslator):
             if task.glossaries:
                 logger.debug("%s: Sending reminder", self)
                 sess.append(
-                    Message(role=Role.User, content=f"[{", ".join(g[0] for g in task.glossaries)}]"))
+                    Message(role=Role.User, content=f"Translation references [{", ".join(g[0] for g in task.glossaries)}]"))
                 sess.append(
                     Message(role=Role.Assistant, content=f"[{", ".join(g[1] for g in task.glossaries)}]"))
         remind()
