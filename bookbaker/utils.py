@@ -50,7 +50,7 @@ def unescape_ruby(s: str) -> str:
     for match in ruby_matches:
         base: str
         top: str
-        base, top = match[1:-1].split("](^")
+        base, top = match.strip(' ')[1:-1].split("](^")
         base, top = base.strip(' '), top.strip(' ')
         replacement = f"<ruby><rb>{base}</rb><rt>{top}</rt></ruby>"
         s = s.replace(match, replacement)
