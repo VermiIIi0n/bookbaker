@@ -13,6 +13,8 @@ from ..utils import get_url_content
 from .base import BaseExporter
 
 
+__all__ = ["EpubExporter"]
+
 _a_img_matcher = re.compile(r"<a.*?href=\"(.+?)\".*?name=\"img\".*?>.*?<\/a>")
 _img_matcher = re.compile(r"<img.*?src=\"(.*?)\".*?>")
 

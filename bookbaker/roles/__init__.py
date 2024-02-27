@@ -9,3 +9,4 @@ from .epub import *
 from .esj import *
 from .masiro import *
 from .kakuyomu import *
+from .novelup import *

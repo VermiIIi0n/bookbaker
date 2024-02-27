@@ -11,6 +11,9 @@ from .novelup import NovelUpCrawler
 from ..classes import Context, Task
 
 
+__all__ = ["AutoCrawler"]
+
+
 class AutoCrawler(BaseCrawler):
     """
     Automatically choose the right crawler for the given URL

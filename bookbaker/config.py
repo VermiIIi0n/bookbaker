@@ -11,6 +11,11 @@ from vermils.gadgets.monologger import MonoLogger
 from .classes import Task
 
 
+__all__ = [
+    "Config"
+]
+
+
 class BaseConfig(BaseModel):
     model_config = ConfigDict(
         validate_assignment=True,

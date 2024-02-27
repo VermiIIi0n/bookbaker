@@ -12,6 +12,9 @@ from .base import BaseCrawler
 from ..classes import Book, Chapter, Episode, Line, TimeMeta, Context, Task
 
 
+__all__ = ["SyosetuOrgCrawler"]
+
+
 class SyosetuOrgCrawler(BaseCrawler):
     """
     Crawler for syosetu.org

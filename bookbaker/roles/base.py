@@ -12,6 +12,15 @@ from ..classes import Context, Book, Chapter, Episode, Task
 R = TypeVar('R', bound='BaseRole')
 
 
+__all__ = [
+    "BaseRole",
+    "BaseCrawler",
+    "BaseTranslator",
+    "BaseExporter",
+    "recover_from_dict",
+]
+
+
 class BaseRole(BaseModel):
     model_config = ConfigDict(extra="allow")
     name: str = Field(default_factory=lambda: f"role-{str(uuid4())[:8]}")

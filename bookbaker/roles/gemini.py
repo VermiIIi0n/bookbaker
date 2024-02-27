@@ -14,6 +14,9 @@ from ..classes import Book, Chapter, Episode
 from .base import BaseTranslator
 
 
+__all__ = ["GeminiTranslator"]
+
+
 class GeminiTranslator(BaseTranslator):
     """
     # GeminiTranslator Class

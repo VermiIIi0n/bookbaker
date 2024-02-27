@@ -8,6 +8,9 @@ from .base import BaseTranslator
 from ..classes import Book, Chapter, Episode, Task, Context
 
 
+__all__ = ["DeepLTranslator"]
+
+
 class DeepLTranslator(BaseTranslator):
     """
     # DeepLTranslator Class

@@ -14,6 +14,9 @@ from ..classes import Book, Chapter, Episode, Line
 from ..classes import TimeMeta, Context, Task, ImageRef
 
 
+__all__ = ["KakuyomuCrawler"]
+
+
 class KakuyomuCrawler(BaseCrawler):
     """
     Crawler for kakuyomu.jp
@@ -96,7 +99,8 @@ class KakuyomuCrawler(BaseCrawler):
 
             for episode_info in (items[ep["__ref"]] for ep in chapter_info["episodeUnions"]):
 
-                episode_url = f"{url.scheme}://{url.netloc}{url_path}/episodes/{episode_info["id"]}"
+                episode_url = f"{
+                    url.scheme}://{url.netloc}{url_path}/episodes/{episode_info["id"]}"
 
                 subtitle = episode_info["title"]
                 logger.info("%s: Crawling episode %s from %s",

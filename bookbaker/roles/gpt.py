@@ -15,6 +15,9 @@ from ..classes import Book, Chapter, Episode
 from .base import BaseTranslator
 
 
+__all__ = ["GPTTranslator"]
+
+
 class GPTTranslator(BaseTranslator):
     """
     # GPTTranslator Class
