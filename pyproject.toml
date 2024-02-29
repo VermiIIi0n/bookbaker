@@ -8,7 +8,14 @@ packages = [{ include = "bookbaker" }]
 license = "MIT"
 homepage = "https://github.com/VermiIIi0n/bookbaker"
 
-keywords = ["utilities"]
+keywords = [
+    "utilities",
+    "translation",
+    "automation",
+    "novel",
+    "webnovel",
+    "lightnovel",
+]
 
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -26,7 +33,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.12"
-httpx = {extras = ["http2", "socks"], version = "^0.26.0"}
+httpx = { extras = ["http2", "socks"], version = "^0.26.0" }
 ujson = "^5.9.0"
 pydantic = "^2.6.1"
 async-tinydb = "^1.7.1"
@@ -51,7 +58,7 @@ toml = "^0.10.2"
 pytest = "^8.0.0"
 pytest-asyncio = "^0.23.5"
 pytest-cov = "^4.1.0"
-coverage = {extras = ["toml"], version = "^7.4.1"}
+coverage = { extras = ["toml"], version = "^7.4.1" }
 mypy = "^1.8.0"
 types-toml = "^0.10.8.7"
 autopep8 = "^2.0.4"

@@ -13,7 +13,7 @@ from bookbaker.roles import BaseRole, BaseCrawler, BaseTranslator, BaseExporter
 from bookbaker.roles import recover_from_dict
 
 
-async def main():
+async def main() -> int:
     parser = argparse.ArgumentParser(
         prog="bookbaker",
         description="A light novel scraping and translating tool",
@@ -197,5 +197,7 @@ async def main():
 
     logger.info("Closing...")
     await db.close()
+
+    return 0
 
 sys.exit(asyncio.run(main()))
