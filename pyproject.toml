@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bookbaker"
-version = "0.1.10"
+version = "0.1.11"
 description = "Components for auto-translation of novel and manga."
 authors = ["VermiIIi0n <dungeon.behind0t@icloud.com>"]
 readme = "README.md"
@@ -33,7 +33,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.12"
-httpx = { extras = ["http2", "socks"], version = "^0.26.0" }
+httpx = { extras = ["http2", "socks"], version = ">=0.26.0, <0.28.0" }
 ujson = "^5.9.0"
 pydantic = "^2.6.1"
 async-tinydb = "^1.7.1"

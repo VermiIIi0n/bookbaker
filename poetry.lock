@@ -2,17 +2,17 @@
 
 [[package]]
 name = "aiodeepl"
-version = "0.1.4"
+version = "0.1.5"
 description = "Async API for DeepL Translator"
 optional = false
 python-versions = ">=3.12,<4.0"
 files = [
-    {file = "aiodeepl-0.1.4-py3-none-any.whl", hash = "sha256:d8ed2aad17523ae54bf1d845fe2fb492cfcb424c6954becfb78921baaeadd9ea"},
-    {file = "aiodeepl-0.1.4.tar.gz", hash = "sha256:87087fae48a6fd88308ef3147c9528c5c8215b5309f3a737d3425309af24722b"},
+    {file = "aiodeepl-0.1.5-py3-none-any.whl", hash = "sha256:b066c3e16faa1a59b59f03e0e266c8ae12a367ae6d2b2453b09c2deaee450af8"},
+    {file = "aiodeepl-0.1.5.tar.gz", hash = "sha256:3c9bf1ea95d61e8e3d4303303579ac9bb731252aad38a847657b433fee27176e"},
 ]
 
 [package.dependencies]
-httpx = {version = ">=0.26.0,<0.27.0", extras = ["http2", "socks"]}
+httpx = {version = ">=0.26.0,<0.28.0", extras = ["http2", "socks"]}
 platformdirs = ">=4.2.0,<5.0.0"
 pydantic = ">=2.6.1,<3.0.0"
 ujson = ">=5.9.0,<6.0.0"
@@ -318,17 +318,17 @@ six = "*"
 
 [[package]]
 name = "gemnine"
-version = "0.1.9"
+version = "0.1.10"
 description = "Wrapper for Gemini AI API"
 optional = false
 python-versions = ">=3.12,<4.0"
 files = [
-    {file = "gemnine-0.1.9-py3-none-any.whl", hash = "sha256:f2165027b281704b614d54bc5196e9d2f73dd7b6871abc995e18a2fccff035c1"},
-    {file = "gemnine-0.1.9.tar.gz", hash = "sha256:cfe6e3ae056863baf8d5a8c2cfa8ddc1a5013425e53eb1478f2b344dd0a7eaa5"},
+    {file = "gemnine-0.1.10-py3-none-any.whl", hash = "sha256:70133274e4b7a4842e3212daa20c9aa4a109388aca0d328bd593f5d026ff2d67"},
+    {file = "gemnine-0.1.10.tar.gz", hash = "sha256:0a0325dcdcc0f0377c80997c5e218548420b231f7ec15b40bac02bb42e154df0"},
 ]
 
 [package.dependencies]
-httpx = {version = ">=0.26.0,<0.27.0", extras = ["http2", "socks"]}
+httpx = {version = ">=0.26.0,<0.28.0", extras = ["http2", "socks"]}
 pillow = ">=10.2.0,<11.0.0"
 platformdirs = ">=4.2.0,<5.0.0"
 pydantic = ">=2.6.1,<3.0.0"
@@ -397,13 +397,13 @@ trio = ["trio (>=0.22.0,<0.25.0)"]
 
 [[package]]
 name = "httpx"
-version = "0.26.0"
+version = "0.27.0"
 description = "The next generation HTTP client."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "httpx-0.26.0-py3-none-any.whl", hash = "sha256:8915f5a3627c4d47b73e8202457cb28f1266982d1159bd5779d86a80c0eab1cd"},
-    {file = "httpx-0.26.0.tar.gz", hash = "sha256:451b55c30d5185ea6b23c2c793abf9bb237d2a7dfb901ced6ff69ad37ec1dfaf"},
+    {file = "httpx-0.27.0-py3-none-any.whl", hash = "sha256:71d5465162c13681bff01ad59b2cc68dd838ea1f10e51574bac27103f00c91a5"},
+    {file = "httpx-0.27.0.tar.gz", hash = "sha256:a0cb88a46f32dc874e04ee956e4c2764aba2aa228f650b06788ba6bda2962ab5"},
 ]
 
 [package.dependencies]
@@ -652,17 +652,17 @@ files = [
 
 [[package]]
 name = "ngptbot"
-version = "0.3.3"
+version = "0.3.4"
 description = "Wrapper for ChatGPT API"
 optional = false
 python-versions = ">=3.12,<4.0"
 files = [
-    {file = "ngptbot-0.3.3-py3-none-any.whl", hash = "sha256:a7ae48f37e7eb7a2a4037cf161dcfd237a94c291172298a842713eef8953d4a2"},
-    {file = "ngptbot-0.3.3.tar.gz", hash = "sha256:cd8b5ae99f108b7d8a15c83ad95fd931658688e1faf57f3bba053634ab436e30"},
+    {file = "ngptbot-0.3.4-py3-none-any.whl", hash = "sha256:54ed19e6c84b0e8ba02a6f12d4d0a235580d74d9141b6266e9887996099630d9"},
+    {file = "ngptbot-0.3.4.tar.gz", hash = "sha256:4d82258af50995167c2d8b65ff40fdb1a743582aeba090f4c476b9e2ff437588"},
 ]
 
 [package.dependencies]
-httpx = {version = ">=0.26.0,<0.27.0", extras = ["http2", "socks"]}
+httpx = {version = ">=0.26.0,<0.28.0", extras = ["http2", "socks"]}
 pillow = ">=10.2.0,<11.0.0"
 platformdirs = ">=4.2.0,<5.0.0"
 pydantic = ">=2.6.1,<3.0.0"
@@ -1372,4 +1372,4 @@ http = ["httpx[http2,socks] (>=0.23.1,<0.24.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "d21d4d18f43ee79f1109ca093fc64ec52fa51c0e99090a6f2cf39f7e6690156e"
+content-hash = "307ec34663763083ab26885898bca42d86b4df051e8a8dc71029c8ce6f745fad"
