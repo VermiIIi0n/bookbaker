@@ -66,7 +66,7 @@ class GPTTranslator(BaseTranslator):
             "Correctly add missing subject and follow references. "
             f"Rephrase for {target_lang} naturalness and correct errors. "
             "For JSON, maintain keys with translated values. "
-            "Keep line count for pure text and preserve '\\n' and [](^) if present. "
+            "For pure text, you MUST keep '\n' count the same and preserve '\\n' and [](^) if present. "
             "Good translation examples for Japanese to Chinese:\n"
             "西に傾きかかった太陽は、この丘の裾遠く広がった有明の入り江の上に、長く曲折しつつはるか水平線の両端に消え入る白い沙丘の上に今は力なく其の光を投げていた。\n"
             "西斜的太阳，无力地照射着山脚下向远处扩展的有明海海湾，照射着蜿蜒曲折地消失在海平线远方的白色沙丘。\n"
@@ -174,7 +174,8 @@ class GPTTranslator(BaseTranslator):
                 except Exception as e:
                     logger.debug("%s: Failed to get valid response: %s", self, resp)
                     logger.exception(e)
-                    sess.messages = sess_bak
+                    sess.messages = sess_bak.copy()
+                    # sess.messages.append(Message(role=Role.System, content=str(e)))
                     retry += 1
                     if self.max_retries is not None and retry > self.max_retries:
                         raise RuntimeError(
