@@ -37,7 +37,7 @@ class GPTTranslator(BaseTranslator):
     convert_ruby: bool = True
     """Convert <ruby> tags to simpler format for LLMs"""
     backend: Bot = Field(
-        default_factory=lambda: Bot(model=Model.GPT4TurboPreview, api_key=''))
+        default_factory=lambda: Bot(model=Model.GPT4Turbo, api_key=''))
 
     async def translate(
             self,

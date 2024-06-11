@@ -108,6 +108,7 @@ class DeepLTranslator(BaseTranslator):
             for i, t in zip(indexes, translated):
                 logger.debug("%s %s -> %s", self, episode.lines[i].content, t.text)
                 episode.lines[i].translated = t.text
+                episode.lines[i].candidates[self.name] = t.text
                 if not t.text.strip():
                     logger.warning("%s: Empty translation for line %s in episode %s",
                                    self, episode.lines[i].content, episode.title)
