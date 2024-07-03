@@ -44,7 +44,7 @@ class SyosetuComCrawler(BaseCrawler):
 
         book_query = Query()
         data: Document = await db.get(
-            book_query.title == title and book_query.author == author)
+            (book_query.title == title) & (book_query.author == author))
         if data:
             logger.debug("%s: Book %s retrieved from database", self, title)
             book = Book.model_validate(dict(data))
@@ -124,7 +124,7 @@ class SyosetuComCrawler(BaseCrawler):
                     logger.warning("%s: Episode %s has no content", self, subtitle)
 
                 await db.upsert(book.model_dump(mode="json"),
-                                book_query.title == title and book_query.author == author)
+                                (book_query.title == title) & (book_query.author == author))
 
                 yield task, book, chapter, episode
 
@@ -132,7 +132,7 @@ class SyosetuComCrawler(BaseCrawler):
             book.chapters.remove(default_chapter)
 
         await db.upsert(book.model_dump(mode="json"),
-                        book_query.title == title and book_query.author == author)
+                        (book_query.title == title) & (book_query.author == author))
 
     def _parse_datatime(self, dt: str) -> datetime:
         try:

@@ -24,7 +24,27 @@ async def get_url_content(url: str, origin: str, ctx: Context) -> bytes:
     return data
 
 _ruby_re = re.compile(r"<ruby>.*?<\/ruby>")
-_un_ruby_re = re.compile(r"\s?\[.*?\]\(\^.*?\)\s?")
+_un_ruby_re = re.compile(r"((?<!\\)[【\[](.*?)[】\]]\(\^(.*?)(?<!\\)\))")
+_rep_re = re.compile(r"((.)\2{8,})")
+_un_rep_re = re.compile(r"((?<!\\)[【\[](.*?)[】\]]\(\*(\d+)(?<!\\)\))")
+
+
+def escape_keychars(s: str) -> str:
+    return (
+        s.replace('[', r"\[")
+        # s.replace('[', r"\]")  # This is not needed
+        .replace('(', r"\(")
+        .replace(')', r"\)")
+    )
+
+
+def unescape_keychars(s: str) -> str:
+    return (
+        s.replace(r"\[", '[')
+        # .replace(r"\]", ']')  # This is not needed
+        .replace(r"\(", '(')
+        .replace(r"\)", ')')
+    )
 
 
 def escape_ruby(s: str) -> str:
@@ -40,7 +60,9 @@ def escape_ruby(s: str) -> str:
                 base += child.text.strip('\n')
             elif child.name == "rt":
                 top += child.text.strip('\n')
-        replacement = f" [{base}](^{top}) "
+        base = escape_keychars(base)
+        top = escape_keychars(top)
+        replacement = f"[{base}](^{top})"
         s = s.replace(match, replacement)
     return s
 
@@ -50,8 +72,31 @@ def unescape_ruby(s: str) -> str:
     for match in ruby_matches:
         base: str
         top: str
-        base, top = match.strip(' ')[1:-1].split("](^")
-        base, top = base.strip(' '), top.strip(' ')
+        full, base, top = match
+        base = unescape_keychars(base)
+        top = unescape_keychars(top)
         replacement = f"<ruby><rb>{base}</rb><rt>{top}</rt></ruby>"
-        s = s.replace(match, replacement)
+        s = s.replace(full, replacement)
+    return s
+
+
+def escape_repetition(s: str) -> str:
+    reps = _rep_re.findall(s)
+    for match in reps:
+        full, pattern = match
+        rep_n = len(full) // len(pattern)
+        pattern = escape_keychars(pattern)
+        replacement = f"[{pattern}](*{rep_n})"
+        s = s.replace(full, replacement)
+    return s
+
+
+def unescape_repetition(s: str) -> str:
+    matches = _un_rep_re.findall(s)
+    for match in matches:
+        full, pattern, rep_n = match
+        rep_n = int(rep_n)
+        pattern = unescape_keychars(pattern)
+        replacement = pattern * rep_n
+        s = s.replace(full, replacement)
     return s

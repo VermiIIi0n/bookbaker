@@ -7,9 +7,10 @@ from typing import overload
 from uuid import uuid4
 from pydantic import Field
 from asynctinydb import Query
-from gptbot import Bot, Message, Role, Model
+from gptbot import Bot, Message, Role, Model, Session
 from ..misc import LANG_NAME_TABLE
 from ..utils import escape_ruby, unescape_ruby
+from ..utils import escape_repetition, unescape_repetition
 from ..classes import Context, Task
 from ..classes import Book, Chapter, Episode
 from .base import BaseTranslator
@@ -57,7 +58,7 @@ class GPTTranslator(BaseTranslator):
         sauce_lang = LANG_NAME_TABLE.get(task.sauce_lang.upper(), task.sauce_lang)
         target_lang = LANG_NAME_TABLE.get(task.target_lang.upper(), task.target_lang)
         logger = ctx.logger
-        sess = task.extra.get(self.name, self.backend.new_session())
+        sess: Session = task.extra.get(self.name, self.backend.new_session())
         task.extra[self.name] = sess
 
         prompt = (
@@ -66,22 +67,22 @@ class GPTTranslator(BaseTranslator):
             "Correctly add missing subject and follow references. "
             f"Rephrase for {target_lang} naturalness and correct errors. "
             "For JSON, maintain keys with translated values. "
-            "For pure text, you MUST keep '\n' count the same and preserve '\\n' and [](^) if present. "
+            "Strictly keep the lines count the same and preserve '\\n' [](*) and [](^) if present. "
             "Good translation examples for Japanese to Chinese:\n"
             "西に傾きかかった太陽は、この丘の裾遠く広がった有明の入り江の上に、長く曲折しつつはるか水平線の両端に消え入る白い沙丘の上に今は力なく其の光を投げていた。\n"
             "西斜的太阳，无力地照射着山脚下向远处扩展的有明海海湾，照射着蜿蜒曲折地消失在海平线远方的白色沙丘。\n"
             "事件の詳しい経過がわかり次第、番組の中でお手伝えいたします。\n"
             "一旦弄清事情的详细经过，我们将随时在节目中报道。\n"
-            "並んでいるね。\n"
-            "这么多人排队啊。\n"
+            # "並んでいるね。\n"
+            # "这么多人排队啊。\n"
             "彼の言うことは、あるいは本当かもしれない。\n"
             "他说的或许是真的。\n"
             "「きみ、あたまいいね。」「よく言われるんだよ。」\n"
             "“你很聪明嘛！”“大家都这么说。”\n"
             "周囲を完全に包囲したから、犯人はもう袋のねずみだ。\n"
             "四下里都包围得如铁桶一般，这下他可是插翅难飞了。\n"
-            "「いつか作家になるか、起業して楽しく暮らす」という夢を持っていた。\n"
-            "我曾有个梦想，当个作家，或是自己做个小生意，过上幸福的生活。\n"
+            # "「いつか作家になるか、起業して楽しく暮らす」という夢を持っていた。\n"
+            # "我曾有个梦想，当个作家，或是自己做个小生意，过上幸福的生活。\n"
         )
         if task.glossaries:
             prompt += "Translation reference you must follow:\n"
@@ -135,6 +136,8 @@ class GPTTranslator(BaseTranslator):
             else:
                 pstr = '\n'.join(map(lambda x: x.replace('\n', r"\n"), c))
 
+            pstr = escape_repetition(pstr)
+
             if self.convert_ruby:
                 pstr = escape_ruby(pstr)
 
@@ -148,10 +151,16 @@ class GPTTranslator(BaseTranslator):
                 self.backend.seed = randint(0, 10000)
                 resp: str = "None"
                 try:
-                    resp = await sess.send(pstr, ensure_json=False)
+                    # resp = await sess.send(pstr, ensure_json=False)
+                    # GPT is slow, use stream to avoid timeout
+                    resp = ''
+                    async for m in sess.stream(pstr):
+                        resp += m
 
                     if self.convert_ruby:
                         resp = unescape_ruby(resp)
+
+                    resp = unescape_repetition(resp)
 
                     logger.debug("%s: Received response: %s", self, resp)
                     if isinstance(c, list):
@@ -258,6 +267,7 @@ class GPTTranslator(BaseTranslator):
         q = Query()
         if book is not None:
             await db.upsert(book.model_dump(mode="json"),
-                            q.title == book.title and q.author == book.author)
+                            # (q.title == book.title) & (q.author == book.author))
+                            (q.title == book.title) & (q.author == book.author))
 
         return episode

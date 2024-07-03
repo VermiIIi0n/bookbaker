@@ -43,7 +43,7 @@ class SyosetuOrgCrawler(BaseCrawler):
 
         book_query = Query()
         data: Document = await db.get(
-            book_query.title == title and book_query.author == author)
+            (book_query.title == title) & (book_query.author == author))
         if data:
             logger.debug("%s: Book %s retrieved from database", self, title)
             book = Book.model_validate(dict(data))
@@ -153,7 +153,7 @@ class SyosetuOrgCrawler(BaseCrawler):
             book.chapters.remove(default_chapter)
 
         await db.upsert(book.model_dump(mode="json"),
-                        book_query.title == title and book_query.author == author)
+                        (book_query.title == title) & (book_query.author == author))
 
     def _parse_datatime(self, dt: str) -> datetime:
         """e.g. '2024年01月16日(火) 22:08改稿'"""
