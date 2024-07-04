@@ -13,12 +13,32 @@ R = TypeVar('R', bound='BaseRole')
 
 
 __all__ = [
+    "BakerError",
+    "LinesMismatchError",
     "BaseRole",
     "BaseCrawler",
     "BaseTranslator",
     "BaseExporter",
     "recover_from_dict",
 ]
+
+
+class BakerError(Exception):
+    """
+    Base exception for bookbaker
+    """
+
+
+class LinesMismatchError(BakerError):
+    """
+    Exception raised when the number of lines of the original and translated
+    texts do not match
+    """
+    def __init__(self, original: int, translated: int):
+        self.original = original
+        self.translated = translated
+        super().__init__(
+            f"Number of lines mismatch: original {original}, translated {translated}")
 
 
 class BaseRole(BaseModel):

@@ -58,7 +58,6 @@ class SyosetuComCrawler(BaseCrawler):
             br.replace_with(f"\n{br.text}")
         book.description = desc.text.strip()
 
-        indexes = body.find(class_="index_box")
         default_chapter = book.get_chapter('')
 
         if default_chapter is None:
@@ -66,67 +65,81 @@ class SyosetuComCrawler(BaseCrawler):
             book.chapters.append(default_chapter)
         chapter = default_chapter
 
-        for child in indexes.children:
-            if not isinstance(child, bs4.Tag):
-                continue
-            if "chapter_title" in child["class"]:
-                chapter_name = child.text.strip()
-                logger.info("%s: Crawling chapter %s", self, chapter_name)
-                old_chapter = book.get_chapter(chapter_name)
-                if old_chapter is None:
-                    logger.debug("%s: New chapter %s created", self, chapter_name)
-                    chapter = Chapter(title=chapter_name)
-                    book.chapters.append(chapter)
-                else:
-                    logger.debug("%s: Chapter %s retrieved from database",
-                                 self, chapter_name)
-                    chapter = old_chapter
-            elif "novel_sublist2" in child["class"]:
-                episode_url = cast(str, child.a["href"])
-                if episode_url.startswith("/"):
-                    episode_url = f"{origin}{episode_url}"
+        page = 1
 
-                subtitle = child.find(class_="subtitle").text.strip()
-                logger.info("%s: Crawling episode %s from %s",
-                            self, subtitle, episode_url)
+        while True:
+            r = await cli.get(task.url, cookies={"over18": "yes"}, params={"p": page})
+            if r.status_code == 404:
+                break
+            r.raise_for_status()
+            soup = bs4.BeautifulSoup(r.text.replace('\u3000', "  "), "xml")
+            body = soup.body
+            if body.find(class_="novelview_pager") is None:
+                break
+            page += 1
 
-                dates = child.find(class_="long_update")
-                created_at = self._parse_datatime(
-                    dates.text)
-                updates = dates.find_all("span")
-                updated_at = self._parse_datatime(
-                    updates[-1]["title"]) if updates else created_at
+            indexes = body.find(class_="index_box")
+            for child in indexes.children:
+                if not isinstance(child, bs4.Tag):
+                    continue
+                if "chapter_title" in child["class"]:
+                    chapter_name = child.text.strip()
+                    logger.info("%s: Crawling chapter %s", self, chapter_name)
+                    old_chapter = book.get_chapter(chapter_name)
+                    if old_chapter is None:
+                        logger.debug("%s: New chapter %s created", self, chapter_name)
+                        chapter = Chapter(title=chapter_name)
+                        book.chapters.append(chapter)
+                    else:
+                        logger.debug("%s: Chapter %s retrieved from database",
+                                     self, chapter_name)
+                        chapter = old_chapter
+                elif "novel_sublist2" in child["class"]:
+                    episode_url = cast(str, child.a["href"])
+                    if episode_url.startswith("/"):
+                        episode_url = f"{origin}{episode_url}"
 
-                episode = chapter.get_episode(subtitle)
-                if episode is not None:
-                    logger.debug("%s: Episode %s retrieved from database",
-                                 self, subtitle)
-                    if episode.time_meta.created_at is None:
-                        episode.time_meta.created_at = created_at
-                    episode.time_meta.updated_at = updated_at
-                    created_at = episode.time_meta.created_at
+                    subtitle = child.find(class_="subtitle").text.strip()
+                    logger.info("%s: Crawling episode %s from %s",
+                                self, subtitle, episode_url)
 
-                    if episode.time_meta.saved_at < updated_at:
-                        logger.debug("%s: Episode %s updated", self, subtitle)
-                        episode_index = chapter.episodes.index(episode)
+                    dates = child.find(class_="long_update")
+                    created_at = self._parse_datatime(
+                        dates.text)
+                    updates = dates.find_all("span")
+                    updated_at = self._parse_datatime(
+                        updates[-1]["title"]) if updates else created_at
+
+                    episode = chapter.get_episode(subtitle)
+                    if episode is not None:
+                        logger.debug("%s: Episode %s retrieved from database",
+                                     self, subtitle)
+                        if episode.time_meta.created_at is None:
+                            episode.time_meta.created_at = created_at
+                        episode.time_meta.updated_at = updated_at
+                        created_at = episode.time_meta.created_at
+
+                        if episode.time_meta.saved_at < updated_at:
+                            logger.debug("%s: Episode %s updated", self, subtitle)
+                            episode_index = chapter.episodes.index(episode)
+                            episode = await self.get_episode(
+                                episode_url, cli,
+                                created_at=created_at, updated_at=updated_at)
+                            chapter.episodes[episode_index] = episode
+                    else:
+                        logger.debug("%s: New episode %s created", self, subtitle)
                         episode = await self.get_episode(
                             episode_url, cli,
                             created_at=created_at, updated_at=updated_at)
-                        chapter.episodes[episode_index] = episode
-                else:
-                    logger.debug("%s: New episode %s created", self, subtitle)
-                    episode = await self.get_episode(
-                        episode_url, cli,
-                        created_at=created_at, updated_at=updated_at)
-                    chapter.episodes.append(episode)
+                        chapter.episodes.append(episode)
 
-                if not episode.lines:
-                    logger.warning("%s: Episode %s has no content", self, subtitle)
+                    if not episode.lines:
+                        logger.warning("%s: Episode %s has no content", self, subtitle)
 
-                await db.upsert(book.model_dump(mode="json"),
-                                (book_query.title == title) & (book_query.author == author))
+                    await db.upsert(book.model_dump(mode="json"),
+                                    (book_query.title == title) & (book_query.author == author))
 
-                yield task, book, chapter, episode
+                    yield task, book, chapter, episode
 
         if not default_chapter.episodes:
             book.chapters.remove(default_chapter)

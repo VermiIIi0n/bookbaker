@@ -13,7 +13,7 @@ from ..utils import escape_ruby, unescape_ruby
 from ..utils import escape_repetition, unescape_repetition
 from ..classes import Context, Task
 from ..classes import Book, Chapter, Episode
-from .base import BaseTranslator
+from .base import BaseTranslator, LinesMismatchError
 
 
 __all__ = ["GPTTranslator"]
@@ -27,6 +27,9 @@ class GPTTranslator(BaseTranslator):
     description: str = "GPT Translator"
     max_retries: int | None = 10
     """Max retries before giving up"""
+    single_line_patience: int = 3
+    """Max retries due to lines mismatch before falling back 
+    to single line translation"""
     batch_size: int = 512
     """Max characters to send in one batch"""
     max_tokens: int | None = 5000
@@ -146,11 +149,24 @@ class GPTTranslator(BaseTranslator):
             sess_bak = sess.messages.copy()
 
             retry = 0
+            retry_due_to_lines = 0
 
             while True:
                 self.backend.seed = randint(0, 10000)
                 resp: str = "None"
                 try:
+                    if retry_due_to_lines >= self.single_line_patience:
+                        logger.debug("%s: Fall back to single line translation", self)
+                        obj = []
+                        for line in pstr.splitlines():
+                            resp = await sess.send(line)
+                            if self.convert_ruby:
+                                resp = unescape_ruby(resp)
+                            resp = unescape_repetition(resp).strip('\n')
+                            obj.append(resp)
+                            logger.debug("%s: Received response: %s", self, resp)
+                        return obj
+
                     # resp = await sess.send(pstr, ensure_json=False)
                     # GPT is slow, use stream to avoid timeout
                     resp = ''
@@ -170,7 +186,7 @@ class GPTTranslator(BaseTranslator):
                         if not isinstance(obj, list):
                             raise TypeError("Expected list, got dict")
                         if len(obj) != len(c):
-                            raise ValueError("Length mismatch")
+                            raise LinesMismatchError(len(pstr.splitlines()), len(obj))
                     else:
                         obj = json.loads(resp)
                         if not isinstance(obj, dict):
@@ -186,6 +202,8 @@ class GPTTranslator(BaseTranslator):
                     sess.messages = sess_bak.copy()
                     # sess.messages.append(Message(role=Role.System, content=str(e)))
                     retry += 1
+                    if isinstance(e, LinesMismatchError):
+                        retry_due_to_lines += 1
                     if self.max_retries is not None and retry > self.max_retries:
                         raise RuntimeError(
                             "Failed to get valid response in %d retries" % self.max_retries)
